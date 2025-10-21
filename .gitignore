@@ -54,12 +54,13 @@ ios/Runner/Firebase/**/*.plist
 firebase-debug.log
 .firebase/
 
-# Local database files (contain user data)
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
+# Local database files - ALLOWING for Supabase migration reference
+# *.db
+# *.db-shm
+# *.db-wal
+# *.sqlite
+# *.sqlite3
+# Note: Database files are included for Supabase migration purposes
 
 # Environment files (may contain secrets)
 .env
@@ -71,9 +72,10 @@ firebase-debug.log
 **/secrets.dart
 **/api_keys.dart
 
-# PocketBase data (if running locally)
-pocketbase-backend-files/pb_data/
-pocketbase-backend-files/*.db
+# PocketBase data (if running locally) - ALLOWING for Supabase migration
+# pocketbase-backend-files/pb_data/
+# pocketbase-backend-files/*.db
+# Note: PocketBase files included for Supabase migration reference
 
 # Build outputs
 *.apk
