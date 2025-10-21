@@ -1,19 +1,16 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:pocketbase/pocketbase.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'core/config/flavor_config.dart';
-import 'core/config/pocketbase_config.dart';
-import 'core/services/cloud_sync_service.dart';
 import 'core/services/connectivity_service.dart';
 import 'core/services/onboarding_service.dart';
-import 'core/services/pocketbase_storage_service.dart';
 import 'core/services/secure_storage_service.dart';
 import 'core/services/security_audit_service.dart';
 import 'core/services/session_manager.dart';
-import 'core/services/storage_service.dart';
+import 'core/services/supabase_service.dart';
+import 'core/services/supabase_sync_service.dart';
 import 'core/services/sync_service.dart';
 import 'data/db.dart';
 import 'features/auth/data/datasources/auth_local_datasource.dart';
@@ -92,9 +89,8 @@ Future<void> initializeDependencies() async {
   const secureStorage = FlutterSecureStorage();
   sl.registerSingleton<FlutterSecureStorage>(secureStorage);
 
-  // PocketBase
-  final pocketBase = PocketBase(PocketBaseConfig.baseUrl);
-  sl.registerSingleton<PocketBase>(pocketBase);
+  // Supabase Service (initialized in main files)
+  sl.registerSingleton<SupabaseService>(SupabaseService());
 
   // Connectivity
   final connectivity = Connectivity();
@@ -131,21 +127,11 @@ Future<void> initializeDependencies() async {
   // Initialize connectivity monitoring
   sl<ConnectivityService>().initialize();
 
-  // Storage Service (PocketBase implementation)
-  sl.registerLazySingleton<StorageService>(
-    () => PocketBaseStorageService(
-      pb: sl(),
-      connectivity: sl(),
-    ),
-  );
-
-  // Sync Service (Cloud implementation with PocketBase)
+  // Sync Service (Supabase implementation)
   sl.registerLazySingleton<SyncService>(
-    () => CloudSyncService(
-      pb: sl(),
-      storageService: sl(),
+    () => SupabaseSyncService(
+      supabaseService: sl(),
       localDataSource: sl(),
-      authRepository: sl(),
       flavorConfig: sl(),
       connectivityService: sl(),
     ),
