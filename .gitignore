@@ -85,6 +85,9 @@ firebase-debug.log
 *.dSYM.zip
 *.dSYM
 
+# Release builds directory
+/releases/
+
 # Keystore files (NEVER commit these!)
 *.jks
 *.keystore

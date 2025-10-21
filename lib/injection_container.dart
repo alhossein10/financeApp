@@ -155,6 +155,8 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(
       localDataSource: sl(),
+      supabaseService: sl(),
+      flavorConfig: sl(),
     ),
   );
 

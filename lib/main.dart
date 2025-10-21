@@ -20,6 +20,7 @@ import 'features/expenses/presentation/bloc/expense_bloc.dart';
 import 'features/admin/presentation/bloc/admin_bloc.dart';
 import 'features/admin/presentation/pages/admin_dashboard_page.dart';
 import 'core/services/onboarding_service.dart';
+import 'core/services/supabase_service.dart';
 import 'core/config/flavor_config.dart';
 
 // This main is kept for backward compatibility
@@ -33,6 +34,9 @@ void main() async {
   } catch (e) {
     FlavorConfig.initialize(AppFlavor.admin);
   }
+  
+  // Initialize Supabase
+  await SupabaseService().initialize();
   
   await di.initializeDependencies();
   runApp(const MyApp());

@@ -18,7 +18,7 @@ class AppDatabase {
     _initDatabase();
   }
 
-  static const int _dbVersion = 6;
+  static const int _dbVersion = 7;
   static const String _dbName = 'finance_app.db';
 
   Database? _db;
@@ -141,6 +141,8 @@ CREATE TABLE expenses(
   expense_date INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
   updated_at INTEGER,
+  creator_username TEXT,
+  creator_email TEXT,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 ''');
@@ -306,6 +308,11 @@ CREATE TABLE password_reset_tokens(
           await db.execute('CREATE INDEX idx_expenses_sync_status ON expenses(sync_status);');
           await db.execute('CREATE INDEX idx_expenses_synced_at ON expenses(synced_at);');
           await db.execute('CREATE INDEX idx_expenses_user_id_sync_status ON expenses(user_id, sync_status);');
+        }
+        if (oldVersion < 7) {
+          // Migration to version 7: Add creator tracking columns
+          await db.execute('ALTER TABLE expenses ADD COLUMN creator_username TEXT;');
+          await db.execute('ALTER TABLE expenses ADD COLUMN creator_email TEXT;');
         }
       },
     );

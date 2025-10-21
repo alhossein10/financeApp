@@ -2,25 +2,33 @@ import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/services/supabase_service.dart';
+import '../../../../core/config/flavor_config.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_datasource.dart';
-import '../models/user_model.dart';
 
 /// Implementation of [AuthRepository]
 /// Handles authentication operations and error mapping
+/// Integrates both local SQLite and Supabase authentication
 class AuthRepositoryImpl implements AuthRepository {
   final AuthLocalDataSource localDataSource;
+  final SupabaseService supabaseService;
+  final FlavorConfig flavorConfig;
 
   // Default session duration: 7 days
   static const Duration _sessionDuration = Duration(days: 7);
 
-  AuthRepositoryImpl({required this.localDataSource});
+  AuthRepositoryImpl({
+    required this.localDataSource,
+    required this.supabaseService,
+    required this.flavorConfig,
+  });
 
   @override
   Future<Either<Failure, User>> login(String email, String password) async {
     try {
-      // Attempt login
+      // Attempt local login first
       final user = await localDataSource.login(email, password);
 
       // Generate session token
@@ -37,6 +45,19 @@ class AuthRepositoryImpl implements AuthRepository {
       await localDataSource.cacheUser(user);
       await localDataSource.cacheAuthToken(token);
 
+      // Authenticate with Supabase (for sync functionality)
+      // Wait for Supabase auth to complete for better sync reliability
+      final supabaseResult = await _authenticateWithSupabase(email, password);
+      supabaseResult.fold(
+        (failure) {
+          print('[AuthRepository] Supabase auth failed: ${failure.message}');
+          // Continue with local auth - sync will be unavailable
+        },
+        (_) {
+          print('[AuthRepository] Supabase auth successful');
+        },
+      );
+
       return Right(user);
     } on AuthenticationException catch (e) {
       return Left(AuthenticationFailure(e.message));
@@ -47,6 +68,19 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  /// Authenticate with Supabase for sync functionality
+  Future<Either<Failure, void>> _authenticateWithSupabase(
+    String email,
+    String password,
+  ) async {
+    try {
+      await supabaseService.signIn(email, password);
+      return const Right(null);
+    } catch (e) {
+      return Left(AuthenticationFailure('Supabase auth failed: ${e.toString()}'));
+    }
+  }
+
   @override
   Future<Either<Failure, User>> register(
     String username,
@@ -54,7 +88,30 @@ class AuthRepositoryImpl implements AuthRepository {
     String password,
   ) async {
     try {
-      // Register new user
+      // Try to register with Supabase first (this creates the auth user)
+      print('[AuthRepository] Attempting Supabase registration: $email');
+      final supabaseResult = await _registerWithSupabase(username, email, password);
+      
+      bool supabaseSuccess = false;
+      if (supabaseResult.isRight()) {
+        supabaseSuccess = true;
+        print('[AuthRepository] Supabase registration successful');
+      } else {
+        // Supabase registration failed - check if it's a network error
+        final failure = supabaseResult.fold((l) => l, (r) => throw Exception());
+        print('[AuthRepository] Supabase registration failed: ${failure.message}');
+        
+        // If it's a network error, continue with local registration
+        // Otherwise, return the error
+        if (!_isNetworkError(failure.message)) {
+          return Left(failure);
+        }
+        
+        print('[AuthRepository] Network error detected - continuing with local-only registration');
+      }
+
+      // Register in local database
+      print('[AuthRepository] Registering locally: $email');
       final user = await localDataSource.register(username, email, password);
 
       // Generate session token
@@ -71,6 +128,12 @@ class AuthRepositoryImpl implements AuthRepository {
       await localDataSource.cacheUser(user);
       await localDataSource.cacheAuthToken(token);
 
+      if (supabaseSuccess) {
+        print('[AuthRepository] Registration complete (with Supabase sync): $email');
+      } else {
+        print('[AuthRepository] Registration complete (local only - sync will retry later): $email');
+      }
+      
       return Right(user);
     } on ValidationException catch (e) {
       return Left(ValidationFailure(e.message));
@@ -78,6 +141,66 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(DatabaseFailure(e.message));
     } catch (e) {
       return Left(DatabaseFailure('Unexpected error during registration: ${e.toString()}'));
+    }
+  }
+
+  /// Check if the error is a network-related error
+  bool _isNetworkError(String errorMessage) {
+    final networkErrorKeywords = [
+      'SocketException',
+      'Failed host lookup',
+      'No address associated with hostname',
+      'Network is unreachable',
+      'Connection refused',
+      'Connection timed out',
+      'ClientException',
+      'errno = 7',
+    ];
+    
+    return networkErrorKeywords.any((keyword) => 
+      errorMessage.toLowerCase().contains(keyword.toLowerCase())
+    );
+  }
+
+  /// Register with Supabase with timeout
+  Future<Either<Failure, void>> _registerWithSupabase(
+    String username,
+    String email,
+    String password,
+  ) async {
+    try {
+      // Add timeout to prevent hanging on network issues
+      await supabaseService.signUp(
+        email: email,
+        password: password,
+        username: username,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Supabase registration timeout - network may be unavailable');
+        },
+      );
+      print('[AuthRepository] Supabase registration successful');
+      return const Right(null);
+    } catch (e) {
+      final errorMessage = e.toString();
+      print('[AuthRepository] Supabase registration error: $errorMessage');
+      
+      // Check for rate limit error
+      if (errorMessage.contains('429') || errorMessage.contains('rate_limit')) {
+        return Left(AuthenticationFailure(
+          'Too many registration attempts. Please wait a few seconds and try again.'
+        ));
+      }
+      
+      // Check for email already exists
+      if (errorMessage.contains('already registered') || errorMessage.contains('already exists')) {
+        return Left(AuthenticationFailure(
+          'This email is already registered. Please login instead.'
+        ));
+      }
+      
+      return Left(AuthenticationFailure('Failed to register with Supabase: ${e.toString()}'));
     }
   }
 
@@ -94,6 +217,14 @@ class AuthRepositoryImpl implements AuthRepository {
 
       // Clear cached data
       await localDataSource.logout();
+
+      // Sign out from Supabase
+      try {
+        await supabaseService.signOut();
+      } catch (e) {
+        print('[AuthRepository] Supabase sign out failed: $e');
+        // Continue with local logout even if Supabase fails
+      }
 
       return const Right(null);
     } on DatabaseException catch (e) {

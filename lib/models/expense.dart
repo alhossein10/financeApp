@@ -20,7 +20,7 @@ class ExpenseRecord {
   final double? priceTry;
   final InvoiceStatus invoiceStatus;
   final String? invoiceFilePath; // optional local file path
-  final String? invoiceCloudFileId; // PocketBase file record ID
+  final String? invoiceCloudFileId; // Supabase file record ID
   final SyncStatus syncStatus;
   final DateTime? syncedAt;
   final int syncRetryCount;

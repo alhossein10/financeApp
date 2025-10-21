@@ -94,6 +94,28 @@ See the [PocketBase Setup Guide](POCKETBASE_COMPLETE_SETUP_GUIDE.md) for detaile
 
 ## Building the Application
 
+> **📚 Complete Build Documentation**: See [BUILD_SYSTEM_INDEX.md](BUILD_SYSTEM_INDEX.md) for comprehensive build guides, scripts, and checklists.
+
+### Quick Start
+
+**Using Build Scripts (Recommended):**
+```bash
+# Clean build artifacts
+clean_build.bat
+
+# Build debug APKs (interactive)
+build_dev.bat
+
+# Build production releases (APK + AAB)
+build_releases.bat
+```
+
+**Documentation Quick Links:**
+- 🚀 [Quick Reference](FLAVOR_QUICK_REFERENCE.md) - Essential commands
+- 📖 [Build Instructions](BUILD_INSTRUCTIONS.md) - Complete guide
+- ✅ [Release Checklist](RELEASE_CHECKLIST.md) - Pre-release checklist
+- 🎨 [Build Process Diagram](BUILD_PROCESS_DIAGRAM.md) - Visual guide
+
 ### Install Dependencies
 
 ```bash
@@ -332,10 +354,18 @@ flutter run --flavor admin -t lib/main_admin.dart
 
 ## Documentation
 
+### Build System
+- [Build System Index](BUILD_SYSTEM_INDEX.md) - Complete build documentation index
+- [Flavors Setup Complete](FLAVORS_SETUP_COMPLETE.md) - Flavor configuration overview
+- [Build Instructions](BUILD_INSTRUCTIONS.md) - Comprehensive build guide
+- [Flavor Quick Reference](FLAVOR_QUICK_REFERENCE.md) - Quick commands
+- [Release Checklist](RELEASE_CHECKLIST.md) - Pre-release checklist
+- [Build Process Diagram](BUILD_PROCESS_DIAGRAM.md) - Visual architecture guide
+- [iOS Flavor Configuration](ios/FLAVOR_SETUP_INSTRUCTIONS.md) - iOS setup
+
+### Backend & Deployment
 - [PocketBase Setup Guide](POCKETBASE_COMPLETE_SETUP_GUIDE.md)
 - [Deployment Guide](DEPLOYMENT_GUIDE.md)
-- [Build Flavor Setup](BUILD_FLAVOR_SETUP_COMPLETE.md)
-- [iOS Flavor Configuration](ios/FLAVOR_SETUP_INSTRUCTIONS.md)
 - [Security Implementation](SECURITY_AUDIT_IMPLEMENTATION.md)
 
 ## License

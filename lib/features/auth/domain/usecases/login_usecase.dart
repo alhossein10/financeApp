@@ -1,7 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/services/secure_storage_service.dart';
-import '../../../../core/services/pocketbase_service.dart';
+import '../../../../core/services/supabase_service.dart';
 import '../../../../core/utils/validators.dart';
 import '../entities/user.dart';
 import '../repositories/auth_repository.dart';
@@ -29,7 +29,7 @@ class LoginUseCase {
     // Attempt local login first
     final result = await repository.login(params.email, params.password);
     
-    // If local login successful, try to authenticate with PocketBase
+    // If local login successful, try to authenticate with Supabase
     if (result.isRight()) {
       // If remember me is checked, store credentials
       if (params.rememberMe) {
@@ -42,16 +42,17 @@ class LoginUseCase {
         await secureStorageService.clearStoredCredentials();
       }
       
-      // Try PocketBase login (non-blocking)
+      // Try Supabase login (non-blocking)
       try {
-        final pbService = PocketBaseService();
-        final pbAuth = await pbService.login(params.email, params.password);
-        print('[Login] PocketBase authentication successful');
-        print('[Login] PocketBase user role: ${pbAuth.record?.data['role']}');
+        final supabaseService = SupabaseService();
+        final user = await supabaseService.signIn(params.email, params.password);
+        print('[Login] Supabase authentication successful');
+        final isAdmin = await supabaseService.isAdmin;
+        print('[Login] Supabase user role: ${isAdmin ? 'admin' : 'user'}');
       } catch (e) {
-        // PocketBase login failed, but local login succeeded
+        // Supabase login failed, but local login succeeded
         // Continue with local authentication only
-        print('[Login] PocketBase login failed (non-critical): $e');
+        print('[Login] Supabase login failed (non-critical): $e');
         print('[Login] Continuing with local authentication only');
       }
     }

@@ -44,18 +44,24 @@ class SupabaseSyncService implements SyncService {
   @override
   Future<Either<Failure, void>> syncExpense(Expense expense) async {
     try {
-      // Only sync from user version
-      if (_flavorConfig.flavor != AppFlavor.user) {
-        return const Right(null);
-      }
+      // Both user and admin can sync expenses
+      // Admin syncs to view all expenses, user syncs their own
+      print('[SupabaseSyncService] Starting sync for expense ${expense.id}, flavor: ${_flavorConfig.flavor}');
 
       // Validate expense has an ID
       if (expense.id == null) {
+        print('[SupabaseSyncService] Sync failed: Expense has no ID');
         return const Left(ValidationFailure('Expense must have an ID to sync'));
       }
 
       // Check authentication
+      print('[SupabaseSyncService] Checking authentication...');
+      print('[SupabaseSyncService] isAuthenticated: ${_supabaseService.isAuthenticated}');
+      print('[SupabaseSyncService] currentUser: ${_supabaseService.currentUser}');
+      print('[SupabaseSyncService] currentUserId: ${_supabaseService.currentUserId}');
+      
       if (!_supabaseService.isAuthenticated) {
+        print('[SupabaseSyncService] Sync failed: User not authenticated with Supabase');
         return const Left(UnauthorizedFailure('User not authenticated'));
       }
 
@@ -122,8 +128,9 @@ class SupabaseSyncService implements SyncService {
 
       print('[SupabaseSyncService] Expense synced successfully: ${expense.id}');
       return const Right(null);
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('[SupabaseSyncService] Sync failed: $e');
+      print('[SupabaseSyncService] Stack trace: $stackTrace');
       
       // Handle sync failure
       if (expense.id != null) {
@@ -226,7 +233,7 @@ class SupabaseSyncService implements SyncService {
       for (final record in response) {
         expenses.add(Expense(
           id: record['local_expense_id'] as int,
-          userId: record['user_id'] as String, // Note: UUID instead of int
+          userId: (record['user_id'] as String).hashCode, // Convert UUID to int
           description: record['description'] as String,
           priceUsd: (record['price_usd'] as num?)?.toDouble(),
           priceSyp: (record['price_syp'] as num?)?.toDouble(),
@@ -261,7 +268,7 @@ class SupabaseSyncService implements SyncService {
     print('[SupabaseSyncService] Starting auto sync');
     _autoSyncTimer?.cancel();
     _autoSyncTimer = Timer.periodic(
-      const Duration(minutes: 3), // More frequent than PocketBase
+      const Duration(minutes: 3), // Frequent sync for real-time updates
       (_) => syncPendingExpenses(),
     );
   }
@@ -354,11 +361,7 @@ class SupabaseSyncService implements SyncService {
   /// Sync pending expenses when connectivity is restored
   Future<void> _syncOnConnectivityRestore() async {
     try {
-      // Only sync in user version
-      if (_flavorConfig.flavor != AppFlavor.user) {
-        return;
-      }
-
+      // Both user and admin can sync
       print('[SupabaseSyncService] Starting automatic sync after connectivity restore');
       
       final result = await syncPendingExpenses();
@@ -408,7 +411,7 @@ class SupabaseSyncService implements SyncService {
   }
 }
 
-/// Sync retry strategy (same as PocketBase version)
+/// Sync retry strategy for Supabase operations
 class SyncRetryStrategy {
   static const int maxRetries = 3;
   static const Duration baseDelay = Duration(seconds: 5);

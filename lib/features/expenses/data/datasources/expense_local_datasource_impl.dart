@@ -34,6 +34,8 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
         'expense_date': expenseDate.millisecondsSinceEpoch,
         'created_at': now.millisecondsSinceEpoch,
         'updated_at': now.millisecondsSinceEpoch,
+        'sync_status': SyncStatus.pending.index,
+        'sync_retry_count': 0,
       };
 
       final id = await database.insert(
@@ -54,6 +56,8 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
         expenseDate: expenseDate,
         createdAt: now,
         updatedAt: now,
+        syncStatus: SyncStatus.pending,
+        syncRetryCount: 0,
       );
     } catch (e) {
       throw app_exceptions.DatabaseException('Failed to create expense: ${e.toString()}');

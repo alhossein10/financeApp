@@ -58,8 +58,10 @@ class CreateExpenseUseCase {
     result.fold(
       (failure) {
         // If creation failed, don't attempt sync
+        print('[CreateExpenseUseCase] Expense creation failed, skipping sync: ${failure.message}');
       },
       (expense) {
+        print('[CreateExpenseUseCase] Expense created successfully (ID: ${expense.id}), queuing for sync');
         // Queue for sync asynchronously - don't wait for result
         // Sync errors are handled gracefully by the sync service
         syncService.syncExpense(expense).then((syncResult) {
@@ -67,11 +69,15 @@ class CreateExpenseUseCase {
             (failure) {
               // Sync failed - error is already logged in sync service
               // The expense remains in pending/failed state for retry
+              print('[CreateExpenseUseCase] Sync failed for expense ${expense.id}: ${failure.message}');
             },
             (_) {
               // Sync succeeded - status updated by sync service
+              print('[CreateExpenseUseCase] Sync succeeded for expense ${expense.id}');
             },
           );
+        }).catchError((error) {
+          print('[CreateExpenseUseCase] Sync threw error for expense ${expense.id}: $error');
         });
       },
     );

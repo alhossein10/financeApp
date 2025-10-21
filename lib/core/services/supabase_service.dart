@@ -92,15 +92,20 @@ class SupabaseService {
       if (response.user != null) {
         print('[SupabaseService] Sign up successful for: ${response.user!.email}');
         
-        // Create user profile
-        await createUserProfile(
-          userId: response.user!.id,
-          username: username,
-          email: email,
-          role: 'user', // Default role
-        );
+        // Note: User profile is automatically created by Supabase trigger (handle_new_user)
+        // The trigger reads username from raw_user_meta_data
+        print('[SupabaseService] User profile will be created by database trigger');
         
-        print('[SupabaseService] User profile created');
+        // Wait a moment for trigger to complete
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        // Verify profile was created
+        final profile = await getUserProfile(response.user!.id);
+        if (profile != null) {
+          print('[SupabaseService] User profile created successfully by trigger');
+        } else {
+          print('[SupabaseService] Warning: Profile not found after trigger');
+        }
       }
       
       return response;

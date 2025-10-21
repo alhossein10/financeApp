@@ -229,7 +229,7 @@ class _DatabaseManagementPageState extends State<DatabaseManagementPage> {
                             '  Email: default@finance.app\n'
                             '  Password: password\n\n'
                             '• You will need to log out and log back in\n\n'
-                            '• All PocketBase synced data will remain in the cloud',
+                            '• All Supabase synced data will remain in the cloud',
                           ),
                         ],
                       ),

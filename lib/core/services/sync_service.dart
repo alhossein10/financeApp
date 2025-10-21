@@ -4,12 +4,12 @@ import '../error/failures.dart';
 import '../models/sync_status.dart';
 
 /// Abstract interface for synchronization operations
-/// Handles one-way sync from User version to Admin version via PocketBase
+/// Handles one-way sync from User version to Admin version via Supabase
 abstract class SyncService {
   /// Synchronize a single expense to the cloud
   /// 
   /// This method uploads the expense data and any associated invoice image
-  /// to PocketBase, making it available to the Admin version.
+  /// to Supabase, making it available to the Admin version.
   /// 
   /// Parameters:
   /// - [expense]: The expense to synchronize
@@ -31,7 +31,7 @@ abstract class SyncService {
   
   /// Fetch all expenses from the cloud (Admin only)
   /// 
-  /// This method retrieves all user-submitted expenses from PocketBase.
+  /// This method retrieves all user-submitted expenses from Supabase.
   /// Only accessible when running in Admin flavor.
   /// 
   /// Returns:
