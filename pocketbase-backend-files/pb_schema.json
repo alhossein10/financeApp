@@ -1,0 +1,176 @@
+[
+  {
+    "id": "expenses_collection",
+    "name": "expenses",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "user_id",
+        "name": "user_id",
+        "type": "number",
+        "required": true,
+        "options": {
+          "min": 1
+        }
+      },
+      {
+        "id": "username",
+        "name": "username",
+        "type": "text",
+        "required": true,
+        "options": {
+          "min": 1,
+          "max": 255
+        }
+      },
+      {
+        "id": "user_email",
+        "name": "user_email",
+        "type": "email",
+        "required": true,
+        "options": {}
+      },
+      {
+        "id": "local_expense_id",
+        "name": "local_expense_id",
+        "type": "number",
+        "required": true,
+        "options": {
+          "min": 1
+        }
+      },
+      {
+        "id": "description",
+        "name": "description",
+        "type": "text",
+        "required": true,
+        "options": {
+          "min": 1,
+          "max": 1000
+        }
+      },
+      {
+        "id": "price_usd",
+        "name": "price_usd",
+        "type": "number",
+        "required": false,
+        "options": {
+          "min": 0
+        }
+      },
+      {
+        "id": "price_syp",
+        "name": "price_syp",
+        "type": "number",
+        "required": false,
+        "options": {
+          "min": 0
+        }
+      },
+      {
+        "id": "price_try",
+        "name": "price_try",
+        "type": "number",
+        "required": false,
+        "options": {
+          "min": 0
+        }
+      },
+      {
+        "id": "invoice_status",
+        "name": "invoice_status",
+        "type": "number",
+        "required": true,
+        "options": {
+          "min": 0,
+          "max": 10
+        }
+      },
+      {
+        "id": "invoice_file_id",
+        "name": "invoice_file_id",
+        "type": "text",
+        "required": false,
+        "options": {
+          "max": 255
+        }
+      },
+      {
+        "id": "expense_date",
+        "name": "expense_date",
+        "type": "date",
+        "required": true,
+        "options": {}
+      },
+      {
+        "id": "synced_at",
+        "name": "synced_at",
+        "type": "date",
+        "required": true,
+        "options": {}
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_expenses_user_id ON expenses (user_id)",
+      "CREATE INDEX idx_expenses_synced_at ON expenses (synced_at)"
+    ],
+    "listRule": "@request.auth.id != \"\" && (@request.auth.role = \"admin\" || user_id = @request.auth.id)",
+    "viewRule": "@request.auth.id != \"\" && (@request.auth.role = \"admin\" || user_id = @request.auth.id)",
+    "createRule": "@request.auth.id != \"\" && @request.data.user_id = @request.auth.id",
+    "updateRule": null,
+    "deleteRule": null
+  },
+  {
+    "id": "invoice_files_collection",
+    "name": "invoice_files",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "user_id",
+        "name": "user_id",
+        "type": "number",
+        "required": true,
+        "options": {
+          "min": 1
+        }
+      },
+      {
+        "id": "expense_id",
+        "name": "expense_id",
+        "type": "number",
+        "required": true,
+        "options": {
+          "min": 1
+        }
+      },
+      {
+        "id": "file",
+        "name": "file",
+        "type": "file",
+        "required": true,
+        "options": {
+          "maxSelect": 1,
+          "maxSize": 10485760,
+          "mimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/jpg",
+            "image/heic",
+            "image/webp"
+          ]
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_invoice_files_user_id ON invoice_files (user_id)",
+      "CREATE INDEX idx_invoice_files_expense_id ON invoice_files (expense_id)"
+    ],
+    "listRule": "@request.auth.id != \"\" && (@request.auth.role = \"admin\" || user_id = @request.auth.id)",
+    "viewRule": "@request.auth.id != \"\" && (@request.auth.role = \"admin\" || user_id = @request.auth.id)",
+    "createRule": "@request.auth.id != \"\" && @request.data.user_id = @request.auth.id",
+    "updateRule": null,
+    "deleteRule": "@request.auth.id != \"\" && @request.auth.role = \"admin\""
+  }
+]
