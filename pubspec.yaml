@@ -72,9 +72,8 @@ dependencies:
   uuid: ^4.2.1
   shared_preferences: ^2.2.2
   
-  # PocketBase (Self-hosted, truly free)
-  pocketbase: ^0.18.0
-  http: ^1.1.0
+  # Supabase (Managed backend)
+  supabase_flutter: ^2.3.4
   
   # Connectivity
   connectivity_plus: ^6.0.5
