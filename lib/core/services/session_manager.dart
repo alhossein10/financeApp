@@ -1,12 +1,16 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:sqflite/sqflite.dart';
+// Removed sqflite - using alternative storage
 import 'package:uuid/uuid.dart';
 import '../utils/constants.dart';
 import '../../features/auth/data/models/session_model.dart';
 import '../error/exceptions.dart' as app_exceptions;
 
+// Type alias for compatibility - this version doesn't use sqflite
+typedef Database = dynamic;
+
 /// Service for managing user sessions
 /// Handles session creation, validation, refresh, and clearing
+/// NOTE: This is a stub for Laravel version - sessions handled by backend
 class SessionManager {
   final Database database;
   final FlutterSecureStorage secureStorage;
@@ -42,7 +46,7 @@ class SessionManager {
           'expires_at': expiresAt.millisecondsSinceEpoch,
           'last_activity': now.millisecondsSinceEpoch,
         },
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        // conflictAlgorithm: ConflictAlgorithm.replace, // Not available without sqflite
       );
 
       final session = SessionModel(

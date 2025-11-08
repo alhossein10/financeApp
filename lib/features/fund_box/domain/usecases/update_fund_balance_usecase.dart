@@ -5,13 +5,20 @@ import '../entities/fund_box.dart';
 import '../repositories/fund_box_repository.dart';
 
 /// Parameters for updating fund balance
+/// Supports multi-currency updates
 class UpdateFundBalanceParams {
   final int userId;
-  final double newBalance;
+  final double? balanceUsd;
+  final double? balanceSyp;
+  final double? balanceTry;
+  final double? newBalance; // Legacy parameter for backward compatibility
 
   const UpdateFundBalanceParams({
     required this.userId,
-    required this.newBalance,
+    this.balanceUsd,
+    this.balanceSyp,
+    this.balanceTry,
+    this.newBalance,
   });
 }
 
@@ -36,7 +43,10 @@ class UpdateFundBalanceUseCase {
 
     return await repository.updateFundBalance(
       userId: params.userId,
-      newBalance: params.newBalance,
+      balanceUsd: params.balanceUsd,
+      balanceSyp: params.balanceSyp,
+      balanceTry: params.balanceTry,
+      newBalance: params.newBalance, // Legacy support
     );
   }
 }

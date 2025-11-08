@@ -12,13 +12,14 @@ class GetFundBoxUseCase {
   GetFundBoxUseCase(this.repository);
 
   /// Execute the use case to get fund box for a user
+  /// [currency] optional: 'USD', 'SYP', or 'TRY' to get specific currency balance
   /// Returns Either a Failure or the FundBox entity
-  Future<Either<Failure, FundBox>> call(int userId) async {
+  Future<Either<Failure, FundBox>> call(int userId, {String? currency}) async {
     // Validate user ID
     if (userId <= 0) {
       return Left(ValidationFailure('Invalid user ID'));
     }
 
-    return await repository.getFundBoxByUser(userId);
+    return await repository.getFundBoxByUser(userId, currency: currency);
   }
 }

@@ -18,7 +18,6 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -26,30 +25,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     super.dispose();
   }
 
-  Future<void> _handleResetRequest() async {
+  void _handleResetRequest() {
     if (_formKey.currentState?.validate() ?? false) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Simulate password reset token generation
-      // In a real app, this would call the repository
-      await Future.delayed(const Duration(seconds: 1));
-
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      // Navigate to reset password page with email
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => ResetPasswordPage(
-            email: _emailController.text.trim(),
-          ),
-        ),
-      );
+      context.read<AuthBloc>().add(
+            AuthPasswordResetRequested(
+              email: _emailController.text.trim(),
+            ),
+          );
     }
   }
 
@@ -57,19 +39,45 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(isArabic ? 'نسيت كلمة المرور' : 'Forgot Password'),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthPasswordResetSuccess) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isArabic
+                    ? 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني'
+                    : 'Password reset link sent to your email',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Navigate back to login
+          Navigator.of(context).pop();
+        } else if (state is AuthError) {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(isArabic ? 'نسيت كلمة المرور' : 'Forgot Password'),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 const SizedBox(height: 20),
 
                 // App Logo with lock icon overlay
@@ -120,71 +128,87 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 const SizedBox(height: 48),
 
                 // Email Field
-                AuthTextField(
-                  controller: _emailController,
-                  label: isArabic ? 'البريد الإلكتروني' : 'Email',
-                  hint: isArabic ? 'أدخل بريدك الإلكتروني' : 'Enter your email',
-                  keyboardType: TextInputType.emailAddress,
-                  enabled: !_isLoading,
-                  validator: Validators.validateEmail,
-                  prefixIcon: const Icon(Icons.email_outlined),
+                BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    final isLoading = state is AuthLoading;
+                    return AuthTextField(
+                      controller: _emailController,
+                      label: isArabic ? 'البريد الإلكتروني' : 'Email',
+                      hint: isArabic ? 'أدخل بريدك الإلكتروني' : 'Enter your email',
+                      keyboardType: TextInputType.emailAddress,
+                      enabled: !isLoading,
+                      validator: Validators.validateEmail,
+                      prefixIcon: const Icon(Icons.email_outlined),
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
 
                 // Send Code Button
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleResetRequest,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(
-                          isArabic ? 'إرسال رمز التحقق' : 'Send Verification Code',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    final isLoading = state is AuthLoading;
+                    return ElevatedButton(
+                      onPressed: isLoading ? null : _handleResetRequest,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              isArabic ? 'إرسال رابط إعادة التعيين' : 'Send Reset Link',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
 
                 // Back to Login
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      isArabic ? 'تذكرت كلمة المرور؟' : 'Remember your password?',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              Navigator.of(context).pop();
-                            },
-                      child: Text(
-                        isArabic ? 'تسجيل الدخول' : 'Login',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
+                BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    final isLoading = state is AuthLoading;
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          isArabic ? 'تذكرت كلمة المرور؟' : 'Remember your password?',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        TextButton(
+                          onPressed: isLoading
+                              ? null
+                              : () {
+                                  Navigator.of(context).pop();
+                                },
+                          child: Text(
+                            isArabic ? 'تسجيل الدخول' : 'Login',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
           ),
         ),
+      ),
       ),
     );
   }

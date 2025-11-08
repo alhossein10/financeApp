@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/utils/validators.dart';
 import '../entities/user.dart';
+import '../entities/registration_result.dart';
 import '../repositories/auth_repository.dart';
 
 /// Use case for user registration with validation
@@ -12,7 +13,7 @@ class RegisterUseCase {
 
   /// Execute registration with username, email, and password
   /// Validates all inputs before attempting registration
-  Future<Either<Failure, User>> call(RegisterParams params) async {
+  Future<Either<Failure, RegistrationResult>> call(RegisterParams params) async {
     // Validate username
     if (params.username.isEmpty) {
       return const Left(ValidationFailure('Username cannot be empty'));
@@ -44,11 +45,32 @@ class RegisterUseCase {
       return const Left(ValidationFailure('Passwords do not match'));
     }
 
+    // Validate group code for regular users
+    if (params.role == 'user') {
+      if (params.groupCode == null || params.groupCode!.isEmpty) {
+        return const Left(ValidationFailure('Group code is required for users'));
+      }
+      
+      if (params.groupCode!.length != 6) {
+        return const Left(ValidationFailure('Group code must be exactly 6 characters'));
+      }
+      
+      // Validate alphanumeric
+      if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(params.groupCode!)) {
+        return const Left(ValidationFailure('Group code must contain only letters and numbers'));
+      }
+    }
+
     // Attempt registration
     return await repository.register(
       params.username,
       params.email,
       params.password,
+      organizationName: params.organizationName,
+      departmentName: params.departmentName,
+      groupCode: params.groupCode,
+      superAdminGroupCode: params.superAdminGroupCode,
+      role: params.role,
     );
   }
 }
@@ -59,11 +81,21 @@ class RegisterParams {
   final String email;
   final String password;
   final String confirmPassword;
+  final String? organizationName;
+  final String? departmentName;
+  final String? groupCode; // Admin group code (for users joining admin groups)
+  final String? superAdminGroupCode; // SuperAdmin group code (for admins joining SuperAdmin groups)
+  final String role;
 
   const RegisterParams({
     required this.username,
     required this.email,
     required this.password,
     required this.confirmPassword,
+    this.organizationName,
+    this.departmentName,
+    this.groupCode,
+    this.superAdminGroupCode,
+    this.role = 'user',
   });
 }

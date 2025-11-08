@@ -62,18 +62,15 @@ class InsufficientFundsException extends AppException {
 
 /// Exception thrown when invalid credentials are provided
 class InvalidCredentialsException extends AuthenticationException {
-  const InvalidCredentialsException([String message = 'Invalid credentials provided'])
-      : super(message);
+  const InvalidCredentialsException([super.message = 'Invalid credentials provided']);
 }
 
 /// Exception thrown when a user already exists
 class UserAlreadyExistsException extends AuthenticationException {
-  const UserAlreadyExistsException([String message = 'User already exists'])
-      : super(message);
+  const UserAlreadyExistsException([super.message = 'User already exists']);
 }
 
 /// Exception thrown when a token is invalid or expired
 class InvalidTokenException extends AuthenticationException {
-  const InvalidTokenException([String message = 'Invalid or expired token'])
-      : super(message);
+  const InvalidTokenException([super.message = 'Invalid or expired token']);
 }

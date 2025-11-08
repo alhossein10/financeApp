@@ -14,25 +14,10 @@ class LogoutUseCase {
   /// Execute logout
   /// Clears session and authentication data including secure storage and Supabase
   Future<Either<Failure, void>> call() async {
-    // ALWAYS clear local data first - this ensures user is logged out locally
-    // even if cloud logout fails
+    // Clear local data first
     await secureStorageService.clearAll();
     
-    // Try to logout from Supabase (non-critical, don't block on failure)
-    try {
-      final supabaseService = SupabaseService();
-      if (supabaseService.isAuthenticated) {
-        await supabaseService.signOut();
-        print('[Logout] Supabase logout successful');
-      } else {
-        print('[Logout] Supabase not authenticated, skipping cloud logout');
-      }
-    } catch (e) {
-      // Ignore Supabase logout errors - local logout is what matters
-      print('[Logout] Supabase logout failed (non-critical): $e');
-    }
-    
-    // Now logout from local repository
+    // Logout from repository (clears Laravel session)
     final result = await repository.logout();
     
     return result;

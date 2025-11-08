@@ -8,23 +8,31 @@ class SplashPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Theme.of(context).primaryColor.withOpacity(0.1),
-              Colors.white,
-            ],
-          ),
+        decoration: const BoxDecoration(
+          // Dark teal background matching the splash screen
+          color: Color(0xFF0D4D4D),
         ),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AppLogo(size: 120, showText: true),
-              SizedBox(height: 40),
-              CircularProgressIndicator(),
+              // Show full splash image with text
+              Image.asset(
+                'assets/images/splash_full.png',
+                width: 300,
+                height: 400,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  // Fallback to AppLogo if image not found
+                  return const AppLogo(size: 200, showText: true);
+                },
+              ),
+              const SizedBox(height: 40),
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  const Color(0xFFC4A962), // Gold color
+                ),
+              ),
             ],
           ),
         ),

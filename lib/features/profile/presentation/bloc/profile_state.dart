@@ -62,3 +62,20 @@ class ProfileError extends ProfileState {
   @override
   List<Object?> get props => [message];
 }
+
+/// Password change successful
+class ProfilePasswordChangeSuccess extends ProfileState {
+  final String message;
+
+  const ProfilePasswordChangeSuccess({
+    this.message = 'Password changed successfully',
+  });
+
+  @override
+  List<Object?> get props => [message];
+}
+
+/// Account deleted successfully
+class ProfileAccountDeleted extends ProfileState {
+  const ProfileAccountDeleted();
+}

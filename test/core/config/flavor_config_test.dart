@@ -3,12 +3,23 @@ import 'package:finance_app/core/config/flavor_config.dart';
 
 void main() {
   group('AppFlavor', () {
+    test('should correctly identify superAdmin flavor', () {
+      // Arrange
+      const flavor = AppFlavor.superAdmin;
+
+      // Assert
+      expect(flavor.isSuperAdmin, isTrue);
+      expect(flavor.isAdmin, isFalse);
+      expect(flavor.isUser, isFalse);
+    });
+
     test('should correctly identify admin flavor', () {
       // Arrange
       const flavor = AppFlavor.admin;
 
       // Assert
       expect(flavor.isAdmin, isTrue);
+      expect(flavor.isSuperAdmin, isFalse);
       expect(flavor.isUser, isFalse);
     });
 
@@ -19,6 +30,7 @@ void main() {
       // Assert
       expect(flavor.isUser, isTrue);
       expect(flavor.isAdmin, isFalse);
+      expect(flavor.isSuperAdmin, isFalse);
     });
   });
 
@@ -27,6 +39,106 @@ void main() {
       // Reset the singleton instance before each test
       // This is a workaround since we can't directly reset the private _instance
       // We'll initialize it in each test
+    });
+
+    group('SuperAdmin Flavor Configuration', () {
+      test('should initialize with superAdmin flavor and correct module settings', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.flavor, equals(AppFlavor.superAdmin));
+        expect(config.appName, equals('Finance SuperAdmin'));
+        expect(config.applicationId, equals('com.app.finance.superadmin'));
+        expect(config.enableCashModule, isTrue);
+        expect(config.enableCashboxModule, isTrue);
+        expect(config.enableCurrencyModule, isFalse); // Disabled for SuperAdmin
+        expect(config.enableExpensesModule, isTrue);
+        expect(config.enableExportModule, isFalse); // Disabled for SuperAdmin
+        expect(config.requiresAdminRole, isTrue);
+        expect(config.enableAdminDashboard, isFalse); // SuperAdmin has different dashboard
+        expect(config.enableFundBox, isTrue);
+        expect(config.enableAuditLogs, isTrue);
+        expect(config.enableUserManagement, isTrue);
+      });
+
+      test('should have SuperAdmin-specific flags correctly set', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.enableSuperAdminCashPage, isTrue);
+        expect(config.enableSuperAdminExpensesPage, isTrue);
+        expect(config.showIncomingTransfers, isFalse);
+        expect(config.showExchangeHistory, isFalse);
+      });
+
+      test('should return true for isSuperAdmin getter', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.isSuperAdmin, isTrue);
+        expect(config.isAdmin, isFalse);
+        expect(config.isUser, isFalse);
+      });
+
+      test('should have correct app name for superAdmin flavor', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.appName, equals('Finance SuperAdmin'));
+      });
+
+      test('should have correct application ID for superAdmin flavor', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.applicationId, equals('com.app.finance.superadmin'));
+      });
+
+      test('should disable Currency module in superAdmin flavor', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.enableCurrencyModule, isFalse);
+      });
+
+      test('should disable Export module in superAdmin flavor', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.enableExportModule, isFalse);
+      });
+
+      test('should not show incoming transfers in superAdmin flavor', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.showIncomingTransfers, isFalse);
+      });
+
+      test('should not show exchange history in superAdmin flavor', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.showExchangeHistory, isFalse);
+      });
     });
 
     group('Admin Flavor Configuration', () {
@@ -44,6 +156,11 @@ void main() {
         expect(config.enableCurrencyModule, isTrue);
         expect(config.enableExpensesModule, isTrue);
         expect(config.enableExportModule, isTrue);
+        expect(config.requiresAdminRole, isTrue);
+        expect(config.enableAdminDashboard, isTrue);
+        expect(config.enableFundBox, isTrue);
+        expect(config.enableAuditLogs, isTrue);
+        expect(config.enableUserManagement, isTrue);
       });
 
       test('should return true for isAdmin getter', () {
@@ -91,6 +208,18 @@ void main() {
         // Assert
         expect(config.enableCashboxModule, isTrue);
       });
+
+      test('should have SuperAdmin-specific flags disabled for admin flavor', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.admin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.enableSuperAdminCashPage, isFalse);
+        expect(config.enableSuperAdminExpensesPage, isFalse);
+        expect(config.showIncomingTransfers, isTrue);
+        expect(config.showExchangeHistory, isTrue);
+      });
     });
 
     group('User Flavor Configuration', () {
@@ -108,6 +237,11 @@ void main() {
         expect(config.enableCurrencyModule, isTrue);
         expect(config.enableExpensesModule, isTrue);
         expect(config.enableExportModule, isTrue);
+        expect(config.requiresAdminRole, isFalse);
+        expect(config.enableAdminDashboard, isFalse);
+        expect(config.enableFundBox, isTrue); // Users can view their own fund box
+        expect(config.enableAuditLogs, isFalse);
+        expect(config.enableUserManagement, isFalse);
       });
 
       test('should return true for isUser getter', () {
@@ -181,6 +315,18 @@ void main() {
 
         // Assert
         expect(config.enableExportModule, isTrue);
+      });
+
+      test('should have SuperAdmin-specific flags disabled for user flavor', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.user);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.enableSuperAdminCashPage, isFalse);
+        expect(config.enableSuperAdminExpensesPage, isFalse);
+        expect(config.showIncomingTransfers, isTrue);
+        expect(config.showExchangeHistory, isTrue);
       });
     });
 
@@ -260,6 +406,187 @@ void main() {
         // Assert
         expect(adminFlavor, equals(AppFlavor.admin));
         expect(userFlavor, equals(AppFlavor.user));
+      });
+    });
+
+    group('SuperAdmin-Specific Flags', () {
+      test('should enable SuperAdmin cash page only for SuperAdmin flavor', () {
+        // Act - SuperAdmin flavor
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final superAdminConfig = FlavorConfig.instance;
+
+        // Act - Admin flavor
+        FlavorConfig.initialize(AppFlavor.admin);
+        final adminConfig = FlavorConfig.instance;
+
+        // Act - User flavor
+        FlavorConfig.initialize(AppFlavor.user);
+        final userConfig = FlavorConfig.instance;
+
+        // Assert
+        expect(superAdminConfig.enableSuperAdminCashPage, isTrue);
+        expect(adminConfig.enableSuperAdminCashPage, isFalse);
+        expect(userConfig.enableSuperAdminCashPage, isFalse);
+      });
+
+      test('should enable SuperAdmin expenses page only for SuperAdmin flavor', () {
+        // Act - SuperAdmin flavor
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final superAdminConfig = FlavorConfig.instance;
+
+        // Act - Admin flavor
+        FlavorConfig.initialize(AppFlavor.admin);
+        final adminConfig = FlavorConfig.instance;
+
+        // Act - User flavor
+        FlavorConfig.initialize(AppFlavor.user);
+        final userConfig = FlavorConfig.instance;
+
+        // Assert
+        expect(superAdminConfig.enableSuperAdminExpensesPage, isTrue);
+        expect(adminConfig.enableSuperAdminExpensesPage, isFalse);
+        expect(userConfig.enableSuperAdminExpensesPage, isFalse);
+      });
+
+      test('should hide incoming transfers only for SuperAdmin flavor', () {
+        // Act - SuperAdmin flavor
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final superAdminConfig = FlavorConfig.instance;
+
+        // Act - Admin flavor
+        FlavorConfig.initialize(AppFlavor.admin);
+        final adminConfig = FlavorConfig.instance;
+
+        // Act - User flavor
+        FlavorConfig.initialize(AppFlavor.user);
+        final userConfig = FlavorConfig.instance;
+
+        // Assert
+        expect(superAdminConfig.showIncomingTransfers, isFalse);
+        expect(adminConfig.showIncomingTransfers, isTrue);
+        expect(userConfig.showIncomingTransfers, isTrue);
+      });
+
+      test('should hide exchange history only for SuperAdmin flavor', () {
+        // Act - SuperAdmin flavor
+        FlavorConfig.initialize(AppFlavor.superAdmin);
+        final superAdminConfig = FlavorConfig.instance;
+
+        // Act - Admin flavor
+        FlavorConfig.initialize(AppFlavor.admin);
+        final adminConfig = FlavorConfig.instance;
+
+        // Act - User flavor
+        FlavorConfig.initialize(AppFlavor.user);
+        final userConfig = FlavorConfig.instance;
+
+        // Assert
+        expect(superAdminConfig.showExchangeHistory, isFalse);
+        expect(adminConfig.showExchangeHistory, isTrue);
+        expect(userConfig.showExchangeHistory, isTrue);
+      });
+    });
+
+    group('Role-Based Access Control', () {
+      test('should return true for allowsAdminFeatures in admin flavor', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.admin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.allowsAdminFeatures, isTrue);
+      });
+
+      test('should return false for allowsAdminFeatures in user flavor', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.user);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.allowsAdminFeatures, isFalse);
+      });
+
+      test('should allow admin access when both flavor and user role are admin', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.admin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.canAccessAdminFeatures(true), isTrue);
+      });
+
+      test('should deny admin access when flavor is admin but user is not admin', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.admin);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.canAccessAdminFeatures(false), isFalse);
+      });
+
+      test('should deny admin access when flavor is user even if user is admin', () {
+        // Act
+        FlavorConfig.initialize(AppFlavor.user);
+        final config = FlavorConfig.instance;
+
+        // Assert
+        expect(config.canAccessAdminFeatures(true), isFalse);
+      });
+
+      test('should enable admin dashboard only in admin flavor', () {
+        // Act - Admin flavor
+        FlavorConfig.initialize(AppFlavor.admin);
+        final adminConfig = FlavorConfig.instance;
+
+        // Act - User flavor
+        FlavorConfig.initialize(AppFlavor.user);
+        final userConfig = FlavorConfig.instance;
+
+        // Assert
+        expect(adminConfig.enableAdminDashboard, isTrue);
+        expect(userConfig.enableAdminDashboard, isFalse);
+      });
+
+      test('should enable fund box in both admin and user flavors', () {
+        // Act - Admin flavor
+        FlavorConfig.initialize(AppFlavor.admin);
+        final adminConfig = FlavorConfig.instance;
+
+        // Act - User flavor
+        FlavorConfig.initialize(AppFlavor.user);
+        final userConfig = FlavorConfig.instance;
+
+        // Assert - Both should have fund box enabled
+        expect(adminConfig.enableFundBox, isTrue);
+        expect(userConfig.enableFundBox, isTrue);
+      });
+
+      test('should enable audit logs only in admin flavor', () {
+        // Act - Admin flavor
+        FlavorConfig.initialize(AppFlavor.admin);
+        final adminConfig = FlavorConfig.instance;
+
+        // Act - User flavor
+        FlavorConfig.initialize(AppFlavor.user);
+        final userConfig = FlavorConfig.instance;
+
+        // Assert
+        expect(adminConfig.enableAuditLogs, isTrue);
+        expect(userConfig.enableAuditLogs, isFalse);
+      });
+
+      test('should enable user management only in admin flavor', () {
+        // Act - Admin flavor
+        FlavorConfig.initialize(AppFlavor.admin);
+        final adminConfig = FlavorConfig.instance;
+
+        // Act - User flavor
+        FlavorConfig.initialize(AppFlavor.user);
+        final userConfig = FlavorConfig.instance;
+
+        // Assert
+        expect(adminConfig.enableUserManagement, isTrue);
+        expect(userConfig.enableUserManagement, isFalse);
       });
     });
   });

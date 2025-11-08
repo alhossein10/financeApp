@@ -1,0 +1,68 @@
+// Firebase Storage is NOT used in this implementation
+// Images are stored as base64 strings in Firestore documents
+// This file is kept for reference only
+
+// If you decide to upgrade to Firebase Storage in the future,
+// uncomment and deploy these rules:
+
+/*
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 1;
+    }
+    
+    // Helper function to validate image file
+    function isValidImage() {
+      return request.resource.size < 10 * 1024 * 1024 && // Max 10MB
+             request.resource.contentType.matches('image/.*');
+    }
+    
+    // Invoice images storage
+    match /invoices/{userId}/{imageId} {
+      // Users can only upload to their own folder
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == userId &&
+                      isValidImage();
+      
+      // Users can read their own images
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Admins can read all images
+      allow read: if isAdmin();
+      
+      // No updates allowed (immutable)
+      allow update: if false;
+      
+      // Users can delete their own images
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Admins can delete any image
+      allow delete: if isAdmin();
+    }
+    
+    // Profile pictures storage
+    match /profile_pictures/{userId}/{imageId} {
+      // Users can upload their own profile picture
+      allow create, update: if isAuthenticated() && 
+                              request.auth.uid == userId &&
+                              isValidImage();
+      
+      // Anyone authenticated can read profile pictures
+      allow read: if isAuthenticated();
+      
+      // Users can delete their own profile picture
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+  }
+}
+*/

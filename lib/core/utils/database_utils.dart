@@ -1,4 +1,4 @@
-import 'package:sqflite/sqflite.dart';
+// Removed sqflite - using alternative storage
 import '../../data/db.dart';
 
 /// Utility class for database operations
@@ -63,7 +63,7 @@ class DatabaseUtils {
     
     for (final table in tables) {
       final result = await db.rawQuery('SELECT COUNT(*) as count FROM $table');
-      stats[table] = Sqflite.firstIntValue(result) ?? 0;
+      stats[table] = (result.first['count'] as int?) ?? 0;
     }
     
     return stats;

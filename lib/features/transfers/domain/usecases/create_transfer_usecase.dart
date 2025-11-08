@@ -35,6 +35,8 @@ class CreateTransferUseCase {
     return await repository.createTransfer(
       userId: params.userId,
       recipientName: params.recipientName,
+      recipientUserId: params.recipientUserId,
+      adminGroupId: params.adminGroupId,
       amountUsd: params.amountUsd,
       convertedAmountUsd: params.convertedAmountUsd,
       amountSypAtExchange: params.amountSypAtExchange,
@@ -47,6 +49,8 @@ class CreateTransferUseCase {
 class CreateTransferParams {
   final int userId;
   final String recipientName;
+  final int? recipientUserId; // ID of the recipient user (required for SuperAdmin transfers to admins)
+  final int? adminGroupId; // Admin group ID for the transfer (should be set from recipient's admin_group_id for SuperAdmin transfers)
   final double amountUsd;
   final double? convertedAmountUsd;
   final double? amountSypAtExchange;
@@ -56,6 +60,8 @@ class CreateTransferParams {
   CreateTransferParams({
     required this.userId,
     required this.recipientName,
+    this.recipientUserId,
+    this.adminGroupId,
     required this.amountUsd,
     this.convertedAmountUsd,
     this.amountSypAtExchange,

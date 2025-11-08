@@ -1,0 +1,2722 @@
+{
+  "info": {
+    "name": "Finance API - Complete Collection v3 (SuperAdmin & Multi-Currency)",
+    "description": "Complete API collection including all features: SuperAdmin, multi-currency balance box, TRY currency, balance-based exchanges, and all existing endpoints.\n\n**Performance Optimizations:**\n- Maximum pagination: per_page is limited to 100 items\n- Response compression: JSON responses over 1KB are automatically compressed with gzip\n- Caching: Frequently accessed data is cached for improved performance",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "finance-api-complete-v3",
+    "version": "3.0.0"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expense_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transfer_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "incoming_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "organization_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "department_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "super_admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "super_admin_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "exchange_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_group_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "super_admin_group_code",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Public Endpoints",
+      "item": [
+        {
+          "name": "Get All Organizations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/organizations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "organizations"
+              ]
+            },
+            "description": "Get list of all organizations (public endpoint)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Departments for Organization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/organizations/{{organization_id}}/departments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "organizations",
+                "{{organization_id}}",
+                "departments"
+              ]
+            },
+            "description": "Get departments for a specific organization"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Authentication",
+      "item": [
+        {
+          "name": "Register SuperAdmin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('super_admin_token', jsonData.data.token);",
+                  "    pm.collectionVariables.set('super_admin_id', jsonData.data.user.id);",
+                  "    // New response format includes group code directly",
+                  "    if (jsonData.data.super_admin_group_code) {",
+                  "        pm.collectionVariables.set('super_admin_group_code', jsonData.data.super_admin_group_code);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Super Admin\",\n  \"email\": \"superadmin@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"role\": \"superAdmin\",\n  \"organization_name\": \"Main Organization\",\n  \"admin_group_name\": \"Main Organization - SuperAdmin Group\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Register a new SuperAdmin user. Automatically creates a SuperAdmin group with a unique 6-digit code. Returns super_admin_group_code and admin_group_name in the response."
+          },
+          "response": []
+        },
+        {
+          "name": "Register Admin with SuperAdmin Group Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('admin_token', jsonData.data.token);",
+                  "    pm.collectionVariables.set('admin_id', jsonData.data.user.id);",
+                  "    if (jsonData.data.admin_group) {",
+                  "        pm.collectionVariables.set('admin_group_id', jsonData.data.admin_group.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"role\": \"admin\",\n  \"organization_name\": \"Main Organization\",\n  \"super_admin_group_code\": \"{{super_admin_group_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Register a new Admin user and join them to a SuperAdmin group using the group code."
+          },
+          "response": []
+        },
+        {
+          "name": "Register Regular User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('token', jsonData.data.token);",
+                  "    pm.collectionVariables.set('user_id', jsonData.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"user1762345305.594501@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"organization_id\": 1,\n  \"department_id\": 2,\n  \"role\": \"user\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Admin User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin1762345305.594501@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"organization_id\": 1,\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('token', jsonData.data.token);",
+                  "    pm.collectionVariables.set('user_id', jsonData.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('token', jsonData.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. SuperAdmin Endpoints",
+      "description": "Endpoints available only to SuperAdmin users",
+      "item": [
+        {
+          "name": "Get Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/analytics?period=all",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "analytics"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "all",
+                  "description": "Time period: '15days', 'month', or 'all'"
+                }
+              ]
+            },
+            "description": "Get aggregated analytics for all admin groups under the SuperAdmin's group. Returns transfer and expense statistics (counts and totals) per admin group. No detailed transactions."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Analytics - 15 Days",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/analytics?period=15days",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "analytics"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "15days"
+                }
+              ]
+            },
+            "description": "Get analytics for the last 15 days."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Analytics - Monthly",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/super-admin/analytics?period=month",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "super-admin",
+                "analytics"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                }
+              ]
+            },
+            "description": "Get analytics for the current month."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2.1. SuperAdmin Group Management",
+      "description": "SuperAdmin group management endpoints - manage admin members and group codes",
+      "item": [
+        {
+          "name": "Get SuperAdmin Group Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/superadmin/group",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "superadmin",
+                "group"
+              ]
+            },
+            "description": "Get SuperAdmin's group information including group code and member count."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Admin Members in SuperAdmin Group",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/superadmin/group/members?page=1&per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "superadmin",
+                "group",
+                "members"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "Items per page (default: 15, maximum: 100)"
+                }
+              ]
+            },
+            "description": "Get paginated list of admin users in the SuperAdmin's group."
+          },
+          "response": []
+        },
+        {
+          "name": "Regenerate SuperAdmin Group Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/superadmin/group/regenerate-code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "superadmin",
+                "group",
+                "regenerate-code"
+              ]
+            },
+            "description": "Regenerate the SuperAdmin's group code. Returns a new unique 6-digit code."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Admin from SuperAdmin Group",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/superadmin/group/members/{{admin_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "superadmin",
+                "group",
+                "members",
+                "{{admin_id}}"
+              ]
+            },
+            "description": "Remove an admin user from the SuperAdmin's group. Also removes the admin's managed group from the SuperAdmin group."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Expenses Management",
+      "item": [
+        {
+          "name": "List Expenses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/expenses?per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "expenses"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "Items per page (default: 15, maximum: 100)"
+                },
+                {
+                  "key": "sync_status",
+                  "value": "synced",
+                  "disabled": true
+                },
+                {
+                  "key": "expense_date_from",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "expense_date_to",
+                  "value": "2024-12-31",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Expense",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('expense_id', jsonData.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Test expense\",\n  \"price_usd\": 100.5,\n  \"price_syp\": 500000,\n  \"expense_date\": \"2024-10-29\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/expenses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "expenses"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Expense",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/expenses/{{expense_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "expenses",
+                "{{expense_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated expense\",\n  \"price_usd\": 150.75\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/expenses/{{expense_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "expenses",
+                "{{expense_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/expenses/{{expense_id}}/invoice",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "expenses",
+                "{{expense_id}}",
+                "invoice"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Invoice",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/expenses/{{expense_id}}/invoice",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "expenses",
+                "{{expense_id}}",
+                "invoice"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Invoice",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/expenses/{{expense_id}}/invoice",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "expenses",
+                "{{expense_id}}",
+                "invoice"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/expenses/{{expense_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "expenses",
+                "{{expense_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Expense in SYP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Local expenses\",\n  \"price_syp\": 10000.00,\n  \"expense_date\": \"2025-11-05\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/expenses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "expenses"
+              ]
+            },
+            "description": "Create an expense in SYP. Automatically decreases SYP balance. Requires sufficient SYP balance."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Expense in TRY",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Turkish expenses\",\n  \"price_try\": 1500.00,\n  \"expense_date\": \"2025-11-05\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/expenses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "expenses"
+              ]
+            },
+            "description": "Create an expense in TRY. Automatically decreases TRY balance. Requires sufficient TRY balance."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Transfers Management",
+      "item": [
+        {
+          "name": "SuperAdmin Transfer to Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('transfer_id', jsonData.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipient_user_id\": {{admin_id}},\n  \"recipient_name\": \"Admin User\",\n  \"amount_usd\": 1000.00,\n  \"transfer_date\": \"2025-11-05\",\n  \"notes\": \"Monthly funding for admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers"
+              ]
+            },
+            "description": "SuperAdmin transfers funds to an Admin in their SuperAdmin group. Automatically increases Admin's USD balance."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Transfer to User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('transfer_id', jsonData.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipient_user_id\": {{user_id}},\n  \"recipient_name\": \"Regular User\",\n  \"amount_usd\": 500.00,\n  \"transfer_date\": \"2025-11-05\",\n  \"notes\": \"Project funding\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers"
+              ]
+            },
+            "description": "Admin transfers funds to a User in their Admin group. Automatically increases User's USD balance."
+          },
+          "response": []
+        },
+        {
+          "name": "List Transfers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transfers?per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "Items per page (default: 15, maximum: 100)"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transfer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('transfer_id', jsonData.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipient_name\": \"John Doe\",\n  \"amount_usd\": 500.0,\n  \"transfer_date\": \"2024-10-29\",\n  \"notes\": \"Test transfer\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transfer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transfers/{{transfer_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers",
+                "{{transfer_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Transfer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipient_name\": \"Jane Doe\",\n  \"amount_usd\": 600.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transfers/{{transfer_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers",
+                "{{transfer_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Exchange to Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exchange_rate\": 15000,\n  \"amount_syp\": 7500000,\n  \"exchange_date\": \"2024-10-29\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transfers/{{transfer_id}}/exchange",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers",
+                "{{transfer_id}}",
+                "exchange"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Transfer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transfers/{{transfer_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers",
+                "{{transfer_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Incoming Management",
+      "item": [
+        {
+          "name": "List Incoming",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/incoming?per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "incoming"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "Items per page (default: 15, maximum: 100)"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Incoming",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('incoming_id', jsonData.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Monthly budget\",\n  \"amount_usd\": 5000.0,\n  \"incoming_date\": \"2024-10-29\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/incoming",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "incoming"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Incoming",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/incoming/{{incoming_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "incoming",
+                "{{incoming_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Incoming",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated monthly budget\",\n  \"amount_usd\": 5500.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/incoming/{{incoming_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "incoming",
+                "{{incoming_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Incoming",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/incoming/{{incoming_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "incoming",
+                "{{incoming_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Incoming endpoints. Admins cannot create incoming (they receive from SuperAdmin transfers)."
+    },
+    {
+      "name": "3. Balance Box (Multi-Currency)",
+      "item": [
+        {
+          "name": "Get All Balances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/fund-box",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "fund-box"
+              ]
+            },
+            "description": "Get all currency balances (USD, SYP, TRY) for the authenticated user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get USD Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/fund-box?currency=USD",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "fund-box"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "USD"
+                }
+              ]
+            },
+            "description": "Get balance for a specific currency (USD, SYP, or TRY)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get SYP Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/fund-box?currency=SYP",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "fund-box"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "SYP"
+                }
+              ]
+            },
+            "description": "Get SYP balance."
+          },
+          "response": []
+        },
+        {
+          "name": "Get TRY Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/fund-box?currency=TRY",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "fund-box"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "TRY"
+                }
+              ]
+            },
+            "description": "Get TRY balance."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Balance (Admin Only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"balance_usd\": 10000.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/fund-box",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "fund-box"
+              ]
+            },
+            "description": "Update balance (Admin only). Note: Balances are automatically updated when transfers are received, expenses are created, or exchanges are made."
+          },
+          "response": []
+        }
+      ],
+      "description": "Multi-currency balance box endpoints. All users have a balance box with USD, SYP, and TRY balances."
+    },
+    {
+      "name": "7. Admin Dashboard (Admin Only)",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/dashboard/stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "dashboard",
+                "stats"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dashboard Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/dashboard/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "dashboard",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dashboard Expenses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/dashboard/expenses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "dashboard",
+                "expenses"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/dashboard/analytics",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "dashboard",
+                "analytics"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Audit Logs (Admin Only)",
+      "item": [
+        {
+          "name": "List Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/audit-logs?per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "Items per page (default: 15, maximum: 100)"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Audit Log",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/audit-logs/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "audit-logs",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "9. Data Synchronization",
+      "item": [
+        {
+          "name": "Batch Sync",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expenses\": [\n    {\n      \"description\": \"Offline expense\",\n      \"price_usd\": 50.0,\n      \"expense_date\": \"2024-10-29\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sync/batch",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sync",
+                "batch"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Changes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sync/changes?since=2024-10-01",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sync",
+                "changes"
+              ],
+              "query": [
+                {
+                  "key": "since",
+                  "value": "2024-10-01"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resolve Conflict",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resource_type\": \"expense\",\n  \"resource_id\": 1,\n  \"resolution\": \"server\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sync/resolve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sync",
+                "resolve"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10. User Profile",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"updated@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"password123\",\n  \"password\": \"newpassword123\",\n  \"password_confirmation\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/profile/password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profile",
+                "password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profile"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11. Data Export",
+      "item": [
+        {
+          "name": "List Exports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/export",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "export"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Export Expenses to PDF",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date_from\": \"2024-01-01\",\n  \"date_to\": \"2024-12-31\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/export/expenses/pdf",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "export",
+                "expenses",
+                "pdf"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Export Expenses to Excel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date_from\": \"2024-01-01\",\n  \"date_to\": \"2024-12-31\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/export/expenses/excel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "export",
+                "expenses",
+                "excel"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "System-Wide Export (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"format\": \"excel\",\n  \"include\": [\n    \"expenses\",\n    \"transfers\",\n    \"incoming\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/export/system-wide",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "export",
+                "system-wide"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Export Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/export/1/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "export",
+                "1",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Export",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/export/1/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "export",
+                "1",
+                "download"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "12. File Operations",
+      "item": [
+        {
+          "name": "Upload File",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "path",
+                  "value": "uploads",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/files/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "files",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete File",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"path\": \"uploads/file.pdf\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/files",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "files"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Exchanges (Balance-Based)",
+      "description": "Exchange endpoints. Balance-based exchanges (not tied to specific transfers). Supports SYP and TRY currencies.",
+      "item": [
+        {
+          "name": "Create Exchange to SYP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('exchange_id', jsonData.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target_currency\": \"SYP\",\n  \"amount_usd\": 100.00,\n  \"exchange_rate\": 11600.00,\n  \"exchange_date\": \"2025-11-05\",\n  \"notes\": \"Exchange for daily expenses\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/exchanges",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "exchanges"
+              ]
+            },
+            "description": "Create an exchange from USD to SYP. Uses total balance box USD, not a specific transfer. Decreases USD balance and increases SYP balance."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Exchange to TRY",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('exchange_id', jsonData.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target_currency\": \"TRY\",\n  \"amount_usd\": 50.00,\n  \"exchange_rate\": 32.50,\n  \"exchange_date\": \"2025-11-05\",\n  \"notes\": \"Exchange for Turkish expenses\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/exchanges",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "exchanges"
+              ]
+            },
+            "description": "Create an exchange from USD to TRY. Uses total balance box USD. Decreases USD balance and increases TRY balance."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Exchange with Transfer ID (Optional)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transfer_id\": {{transfer_id}},\n  \"target_currency\": \"SYP\",\n  \"amount_usd\": 100.00,\n  \"exchange_rate\": 11600.00,\n  \"exchange_date\": \"2025-11-05\",\n  \"notes\": \"Exchange linked to transfer for audit trail\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/exchanges",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "exchanges"
+              ]
+            },
+            "description": "Create an exchange with optional transfer_id for audit trail. Still uses total balance, not transfer-specific balance."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Exchanges",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/exchanges",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "exchanges"
+              ]
+            },
+            "description": "Get all exchanges. Returns user's own exchanges or all group exchanges (for admins)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Exchanges (SYP Only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/exchanges?currency=SYP",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "exchanges"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "SYP",
+                  "description": "Filter by currency: 'all', 'SYP', or 'TRY'"
+                }
+              ]
+            },
+            "description": "Get exchanges filtered by currency (SYP only)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Exchanges (TRY Only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/exchanges?currency=TRY",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "exchanges"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "TRY"
+                }
+              ]
+            },
+            "description": "Get exchanges filtered by currency (TRY only)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Exchange by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/exchanges/{{exchange_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "exchanges",
+                "{{exchange_id}}"
+              ]
+            },
+            "description": "Get a specific exchange by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Exchanges by Transfer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/exchanges/transfer/{{transfer_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "exchanges",
+                "transfer",
+                "{{transfer_id}}"
+              ]
+            },
+            "description": "Get all exchanges linked to a specific transfer (for audit trail)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transfer Balance Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/exchanges/transfer/{{transfer_id}}/balance",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "exchanges",
+                "transfer",
+                "{{transfer_id}}",
+                "balance"
+              ]
+            },
+            "description": "Get transfer balance information (original amount, exchanged, remaining). Note: This is for reference only; exchanges are now balance-based."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Admin Groups",
+      "description": "Admin group management endpoints",
+      "item": [
+        {
+          "name": "Get Admin Group Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/group",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "group"
+              ]
+            },
+            "description": "Get the admin's group information including group code."
+          },
+          "response": []
+        },
+        {
+          "name": "Regenerate Group Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/group/regenerate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "group",
+                "regenerate"
+              ]
+            },
+            "description": "Regenerate the admin's group code."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Group Members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/group/members",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "group",
+                "members"
+              ]
+            },
+            "description": "Get all members of the admin's group."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Group Member",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/group/members/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "group",
+                "members",
+                "{{user_id}}"
+              ]
+            },
+            "description": "Remove a user from the admin's group."
+          },
+          "response": []
+        },
+        {
+          "name": "Join Group (User)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"group_code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/user/join-group",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user",
+                "join-group"
+              ]
+            },
+            "description": "Join an admin group using a group code (for regular users)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Group Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user/group-info",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user",
+                "group-info"
+              ]
+            },
+            "description": "Get the user's current group information."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/user_statistics.dart';
 
 /// Card displaying user statistics
@@ -12,6 +13,8 @@ class ProfileStatisticsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Card(
       elevation: 4,
       child: Padding(

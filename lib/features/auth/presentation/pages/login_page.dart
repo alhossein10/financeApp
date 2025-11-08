@@ -6,6 +6,7 @@ import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/auth_text_field.dart';
+import '../../../../core/widgets/watermark_background.dart';
 import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -50,8 +51,9 @@ class _LoginPageState extends State<LoginPage> {
         title: Text(isArabic ? 'تسجيل الدخول' : 'Login'),
         centerTitle: true,
       ),
-      body: BlocConsumer<AuthBloc, AuthState>(
-        listener: (context, state) {
+      body: WatermarkBackground(
+        child: BlocConsumer<AuthBloc, AuthState>(
+          listener: (context, state) {
           if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -77,8 +79,19 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     const SizedBox(height: 20),
 
-                    // App Logo
-                    const AppLogo(size: 80, showText: false),
+                    // Eagle with text logo
+                    Center(
+                      child: Image.asset(
+                        'assets/images/eagle_with_text.png',
+                        width: 200,
+                        height: 200,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          // Fallback to AppLogo if image not found
+                          return const AppLogo(size: 80, showText: false);
+                        },
+                      ),
+                    ),
                     const SizedBox(height: 24),
 
                     // Welcome Text
@@ -237,7 +250,8 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           );
-        },
+          },
+        ),
       ),
     );
   }

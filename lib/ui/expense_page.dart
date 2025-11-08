@@ -13,10 +13,11 @@ import '../features/expenses/domain/entities/expense.dart' as domain;
 import '../l10n/app_localizations.dart';
 import '../models/expense.dart';
 import '../state/filters.dart';
-import '../data/db.dart';
 import '../utils/camera_helper.dart';
 import '../core/config/flavor_config.dart';
-import '../core/services/storage_service.dart';
+import '../core/config/api_config.dart' as core;
+import '../core/services/token_manager.dart' as core;
+import '../core/widgets/watermark_background.dart';
 import '../injection_container.dart' as di;
 import 'widgets/sync_status_indicator.dart';
 
@@ -29,7 +30,6 @@ class ExpensePage extends StatefulWidget {
 
 class _ExpensePageState extends State<ExpensePage> {
   int? _currentUserId;
-  String? _selectedUserFilter;
   domain.SyncStatus? _selectedSyncStatusFilter;
 
   @override
@@ -44,15 +44,20 @@ class _ExpensePageState extends State<ExpensePage> {
 
   void _loadUserAndData() {
     final authState = context.read<AuthBloc>().state;
-    if (authState is AuthAuthenticated) {
-      _currentUserId = authState.user.id;
+    if (authState is AuthAuthenticated && authState.user != null) {
+      _currentUserId = authState.user!.id;
       context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
     }
   }
 
   void _reload() {
     if (_currentUserId != null) {
-      context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
+      // Only reload if we don't already have loaded expenses
+      // This prevents unnecessary reloads that lose invoice status
+      final currentState = context.read<ExpenseBloc>().state;
+      if (currentState is! ExpenseLoaded) {
+        context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
+      }
     }
   }
 
@@ -362,17 +367,8 @@ class _ExpensePageState extends State<ExpensePage> {
     _reload();
   }
 
-  List<String> _getUniqueUsers(List<domain.Expense> expenses) {
-    final users = <String>{};
-    for (final expense in expenses) {
-      final user = expense.creatorUsername ?? expense.creatorEmail ?? 'Unknown';
-      users.add(user);
-    }
-    return users.toList()..sort();
-  }
-
-  Future<void> _showInvoiceImage(BuildContext context, String? cloudFileId, String? localPath) async {
-    if (cloudFileId == null && localPath == null) {
+  Future<void> _showInvoiceImage(BuildContext context, domain.Expense expense) async {
+    if (expense.invoiceStatus != domain.InvoiceStatus.invoiceAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).translate('no_invoice_image'))),
       );
@@ -383,7 +379,7 @@ class _ExpensePageState extends State<ExpensePage> {
       context: context,
       builder: (ctx) => Dialog(
         child: FutureBuilder<String?>(
-          future: _getImagePath(cloudFileId, localPath),
+          future: _getImageUrl(expense),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const SizedBox(
@@ -406,6 +402,9 @@ class _ExpensePageState extends State<ExpensePage> {
               );
             }
 
+            final imageUrl = snapshot.data!;
+            print('[ExpenseUI] 📸 Loading image from: $imageUrl');
+            
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -421,10 +420,46 @@ class _ExpensePageState extends State<ExpensePage> {
                 ),
                 Flexible(
                   child: InteractiveViewer(
-                    child: Image.file(
-                      File(snapshot.data!),
-                      fit: BoxFit.contain,
-                    ),
+                    child: FutureBuilder<String?>(
+                        future: _getAuthToken(),
+                        builder: (context, tokenSnapshot) {
+                          if (!tokenSnapshot.hasData) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+                          
+                          return Image.network(
+                            imageUrl,
+                                fit: BoxFit.contain,
+                                headers: {
+                                  'Authorization': 'Bearer ${tokenSnapshot.data}',
+                                  'Accept': 'application/json',
+                                },
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: CircularProgressIndicator(
+                                      value: loadingProgress.expectedTotalBytes != null
+                                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                          : null,
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  print('[ExpenseUI] ❌ Image load error: $error');
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.error, size: 48, color: Colors.red),
+                                        const SizedBox(height: 16),
+                                        Text('Failed to load image: ${error.toString()}'),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
                   ),
                 ),
               ],
@@ -435,22 +470,29 @@ class _ExpensePageState extends State<ExpensePage> {
     );
   }
 
-  Future<String?> _getImagePath(String? cloudFileId, String? localPath) async {
-    // If we have a local path and it exists, use it
-    if (localPath != null && await File(localPath).exists()) {
-      return localPath;
+  Future<String?> _getAuthToken() async {
+    try {
+      final tokenManager = di.sl<core.TokenManager>();
+      final token = await tokenManager.getToken();
+      if (token != null) {
+        print('[ExpenseUI] 🔑 Token retrieved: ${token.substring(0, 20)}...');
+      } else {
+        print('[ExpenseUI] ⚠️ No token found');
+      }
+      return token;
+    } catch (e) {
+      print('[ExpenseUI] ⚠️ Failed to get auth token: $e');
+      return null;
     }
+  }
 
-    // Otherwise, try to download from cloud
-    if (cloudFileId != null) {
-      final storageService = di.sl<StorageService>();
-      final result = await storageService.downloadInvoiceImage(cloudFileId);
-      return result.fold(
-        (failure) => null,
-        (file) => file.path,
-      );
+  Future<String?> _getImageUrl(domain.Expense expense) async {
+    // Use the authenticated API endpoint to download invoice
+    if (expense.id != null) {
+      final imageUrl = '${core.ApiConfig.apiUrl}/expenses/${expense.id}/invoice';
+      print('[ExpenseUI] 📸 Using API endpoint: $imageUrl');
+      return imageUrl;
     }
-
     return null;
   }
 
@@ -464,17 +506,26 @@ class _ExpensePageState extends State<ExpensePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(l10n.translate('expense_created'))),
           );
-          _reload();
+          // Reload to get the updated list from server
+          if (_currentUserId != null) {
+            context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
+          }
         } else if (state is ExpenseUpdated) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(l10n.translate('expense_updated'))),
           );
-          _reload();
+          // Reload to get the updated list from server
+          if (_currentUserId != null) {
+            context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
+          }
         } else if (state is ExpenseDeleted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(l10n.translate('expense_deleted'))),
           );
-          _reload();
+          // Reload to get the updated list from server
+          if (_currentUserId != null) {
+            context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
+          }
         } else if (state is ExpenseError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message)),
@@ -500,7 +551,10 @@ class _ExpensePageState extends State<ExpensePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(l10n.translate('sync_completed'))),
           );
-          _reload();
+          // Reload to get the updated list from server
+          if (_currentUserId != null) {
+            context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
+          }
         } else if (state is ExpenseSyncError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -510,9 +564,14 @@ class _ExpensePageState extends State<ExpensePage> {
           );
         }
       },
-      child: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        child: ListView(
+      child: WatermarkBackground(
+        child: _buildExpenseList(context, l10n),
+      ),
+    );
+  }
+
+  Widget _buildExpenseList(BuildContext context, AppLocalizations l10n) {
+    final listView = ListView(
       padding: const EdgeInsets.all(16),
       children: [
         ValueListenableBuilder<ExpenseCurrencyFilter>(
@@ -603,19 +662,38 @@ class _ExpensePageState extends State<ExpensePage> {
                         ),
                       ],
                     ),
-                    // Admin-only filters
+                    // User filter - only show in admin flavor
                     if (FlavorConfig.instance.isAdmin) ...[
                       const SizedBox(height: 8),
-                      // User filter
-                      BlocBuilder<ExpenseBloc, ExpenseState>(
-                        builder: (context, expenseState) {
+                      ValueListenableBuilder<String?>(
+                        valueListenable: UserFilterNotifier.instance,
+                        builder: (context, userFilter, _) {
+                          // Get unique users from expenses
+                          final expenseState = context.read<ExpenseBloc>().state;
+                          final allExpenses = expenseState is ExpenseLoaded 
+                              ? expenseState.expenses
+                              : const <domain.Expense>[];
+                          
+                          // Extract unique users with their display names
+                          final userMap = <int, String>{};
+                          for (final expense in allExpenses) {
+                            if (!userMap.containsKey(expense.userId)) {
+                              userMap[expense.userId] = expense.creatorUsername ?? 
+                                                       expense.creatorEmail ?? 
+                                                       'User ${expense.userId}';
+                            }
+                          }
+                          
+                          final sortedUsers = userMap.entries.toList()
+                            ..sort((a, b) => a.value.compareTo(b.value));
+                          
                           return Row(
                             children: [
                               Text('${l10n.translate('user')}:'),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: DropdownButton<String?>(
-                                  value: _selectedUserFilter,
+                                  value: userFilter,
                                   isExpanded: true,
                                   hint: Text(l10n.translate('all_users')),
                                   items: [
@@ -623,14 +701,15 @@ class _ExpensePageState extends State<ExpensePage> {
                                       value: null,
                                       child: Text(l10n.translate('all_users')),
                                     ),
-                                    ..._getUniqueUsers(expenseState is ExpenseLoaded ? expenseState.expenses : [])
-                                        .map((user) => DropdownMenuItem<String>(
-                                              value: user,
-                                              child: Text(user),
-                                            )),
+                                    ...sortedUsers.map((entry) {
+                                      return DropdownMenuItem<String?>(
+                                        value: entry.key.toString(),
+                                        child: Text(entry.value),
+                                      );
+                                    }),
                                   ],
                                   onChanged: (v) {
-                                    setState(() => _selectedUserFilter = v);
+                                    UserFilterNotifier.instance.value = v;
                                   },
                                 ),
                               ),
@@ -638,8 +717,10 @@ class _ExpensePageState extends State<ExpensePage> {
                           );
                         },
                       ),
+                    ],
+                    // Sync status filter - only show in user flavor
+                    if (!FlavorConfig.instance.isAdmin) ...[
                       const SizedBox(height: 8),
-                      // Sync status filter
                       Row(
                         children: [
                           Text('${l10n.translate('sync_status')}:'),
@@ -694,81 +775,84 @@ class _ExpensePageState extends State<ExpensePage> {
           },
         ),
         const SizedBox(height: 12),
-        BlocBuilder<ExpenseBloc, ExpenseState>(
-          builder: (context, state) {
-            var domainExpenses = state is ExpenseLoaded 
-                ? state.expenses
-                : const <domain.Expense>[];
-            
-            final syncStatusMap = state.syncStatusMap;
-            final currencyFilter = ExpenseFilterNotifier.instance.value;
-            final dateFilter = DateFilterNotifier.instance.value;
-            
-            // Apply currency filter
-            if (currencyFilter != ExpenseCurrencyFilter.all) {
-              domainExpenses = domainExpenses.where((e) {
-                switch (currencyFilter) {
-                  case ExpenseCurrencyFilter.usd:
-                    return (e.priceUsd ?? 0) > 0;
-                  case ExpenseCurrencyFilter.syp:
-                    return (e.priceSyp ?? 0) > 0;
-                  case ExpenseCurrencyFilter.tr:
-                    return (e.priceTry ?? 0) > 0;
-                  case ExpenseCurrencyFilter.all:
-                    return true;
-                }
-              }).toList();
-            }
-            
-            // Apply date filter
-            if (dateFilter.type != DateFilterType.all) {
-              final now = DateTime.now();
-              domainExpenses = domainExpenses.where((e) {
-                final expenseDate = e.expenseDate;
-                switch (dateFilter.type) {
-                  case DateFilterType.today:
-                    return expenseDate.year == now.year && 
-                           expenseDate.month == now.month && 
-                           expenseDate.day == now.day;
-                  case DateFilterType.thisWeek:
-                    final weekStart = now.subtract(Duration(days: now.weekday - 1));
-                    final weekEnd = weekStart.add(const Duration(days: 6));
-                    return expenseDate.isAfter(weekStart.subtract(const Duration(days: 1))) && 
-                           expenseDate.isBefore(weekEnd.add(const Duration(days: 1)));
-                  case DateFilterType.thisMonth:
-                    return expenseDate.year == now.year && expenseDate.month == now.month;
-                  case DateFilterType.custom:
-                    if (dateFilter.startDate != null && dateFilter.endDate != null) {
-                      return expenseDate.isAfter(dateFilter.startDate!.subtract(const Duration(days: 1))) && 
-                             expenseDate.isBefore(dateFilter.endDate!.add(const Duration(days: 1)));
+        ValueListenableBuilder<String?>(
+          valueListenable: UserFilterNotifier.instance,
+          builder: (context, userFilter, _) {
+            return BlocBuilder<ExpenseBloc, ExpenseState>(
+              builder: (context, state) {
+                var domainExpenses = state is ExpenseLoaded 
+                    ? state.expenses
+                    : const <domain.Expense>[];
+                
+                final syncStatusMap = state.syncStatusMap;
+                final currencyFilter = ExpenseFilterNotifier.instance.value;
+                final dateFilter = DateFilterNotifier.instance.value;
+                
+                // Apply currency filter
+                if (currencyFilter != ExpenseCurrencyFilter.all) {
+                  domainExpenses = domainExpenses.where((e) {
+                    switch (currencyFilter) {
+                      case ExpenseCurrencyFilter.usd:
+                        return (e.priceUsd ?? 0) > 0;
+                      case ExpenseCurrencyFilter.syp:
+                        return (e.priceSyp ?? 0) > 0;
+                      case ExpenseCurrencyFilter.tr:
+                        return (e.priceTry ?? 0) > 0;
+                      case ExpenseCurrencyFilter.all:
+                        return true;
                     }
-                    return true;
-                  case DateFilterType.all:
-                    return true;
+                  }).toList();
                 }
-              }).toList();
-            }
-            
-            // Apply admin-only filters
-            if (FlavorConfig.instance.isAdmin) {
-              // Filter by user
-              if (_selectedUserFilter != null) {
-                domainExpenses = domainExpenses.where((e) {
-                  final user = e.creatorUsername ?? e.creatorEmail ?? 'Unknown';
-                  return user == _selectedUserFilter;
-                }).toList();
-              }
-              
-              // Filter by sync status
-              if (_selectedSyncStatusFilter != null) {
-                domainExpenses = domainExpenses.where((e) {
-                  return e.syncStatus == _selectedSyncStatusFilter;
-                }).toList();
-              }
-            }
-            return Column(
-              children: domainExpenses
-                  .map((e) {
+                
+                // Apply date filter
+                if (dateFilter.type != DateFilterType.all) {
+                  final now = DateTime.now();
+                  domainExpenses = domainExpenses.where((e) {
+                    final expenseDate = e.expenseDate;
+                    switch (dateFilter.type) {
+                      case DateFilterType.today:
+                        return expenseDate.year == now.year && 
+                               expenseDate.month == now.month && 
+                               expenseDate.day == now.day;
+                      case DateFilterType.thisWeek:
+                        final weekStart = now.subtract(Duration(days: now.weekday - 1));
+                        final weekEnd = weekStart.add(const Duration(days: 6));
+                        return expenseDate.isAfter(weekStart.subtract(const Duration(days: 1))) && 
+                               expenseDate.isBefore(weekEnd.add(const Duration(days: 1)));
+                      case DateFilterType.thisMonth:
+                        return expenseDate.year == now.year && expenseDate.month == now.month;
+                      case DateFilterType.custom:
+                        if (dateFilter.startDate != null && dateFilter.endDate != null) {
+                          return expenseDate.isAfter(dateFilter.startDate!.subtract(const Duration(days: 1))) && 
+                                 expenseDate.isBefore(dateFilter.endDate!.add(const Duration(days: 1)));
+                        }
+                        return true;
+                      case DateFilterType.all:
+                        return true;
+                    }
+                  }).toList();
+                }
+                
+                // Apply user filter (for admin flavor)
+                if (userFilter != null && userFilter.isNotEmpty) {
+                  final filteredUserId = int.tryParse(userFilter);
+                  if (filteredUserId != null) {
+                    domainExpenses = domainExpenses.where((e) {
+                      return e.userId == filteredUserId;
+                    }).toList();
+                  }
+                }
+                
+                // Filter by sync status (for user flavor)
+                if (_selectedSyncStatusFilter != null) {
+                  domainExpenses = domainExpenses.where((e) {
+                    return e.syncStatus == _selectedSyncStatusFilter;
+                  }).toList();
+                }
+                
+                return Column(
+                  children: domainExpenses
+                      .map((e) {
                     // Get sync status from map or use the expense's own sync status
                     final syncStatus = e.id != null 
                         ? (syncStatusMap[e.id!] ?? e.syncStatus)
@@ -837,7 +921,7 @@ class _ExpensePageState extends State<ExpensePage> {
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: TextButton.icon(
-                                  onPressed: () => _showInvoiceImage(context, e.invoiceCloudFileId, e.invoiceFilePath),
+                                  onPressed: () => _showInvoiceImage(context, e),
                                   icon: const Icon(Icons.image, size: 16),
                                   label: Text(
                                     l10n.translate('view_invoice'),
@@ -864,7 +948,7 @@ class _ExpensePageState extends State<ExpensePage> {
                             } else if (v == 'retry' && e.id != null) {
                               context.read<ExpenseBloc>().add(SyncExpenseRequested(e));
                             } else if (v == 'view_image') {
-                              _showInvoiceImage(context, e.invoiceCloudFileId, e.invoiceFilePath);
+                              _showInvoiceImage(context, e);
                             }
                           },
                           itemBuilder: (ctx) => [
@@ -880,15 +964,25 @@ class _ExpensePageState extends State<ExpensePage> {
                         ),
                       ),
                     );
-                  })
-                  .toList(),
+                      })
+                      .toList(),
+                );
+              },
             );
           },
         ),
-      ],
-        ),
-      ),
-    );
+      ], // Close children
+    ); // Close ListView
+
+    // Wrap with RefreshIndicator only for user flavor
+    if (FlavorConfig.instance.isAdmin) {
+      return listView;
+    } else {
+      return RefreshIndicator(
+        onRefresh: _handleRefresh,
+        child: listView,
+      );
+    }
   }
 }
 

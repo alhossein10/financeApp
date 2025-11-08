@@ -1,24 +1,40 @@
+import 'dart:io';
 import 'package:dartz/dartz.dart';
-import '../../../../core/error/exceptions.dart';
+import '../../../../core/api/api_exception.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/models/queue_item.dart';
 import '../../../../core/services/auth_logger.dart';
+import '../../../../core/services/connectivity_monitor.dart';
+import '../../../../core/services/queue_manager.dart';
 import '../../../../core/services/sync_service.dart';
-import '../../../../features/auth/domain/entities/user.dart';
+import '../../../../core/services/file_upload_service.dart';
 import '../../../../features/auth/domain/repositories/auth_repository.dart';
 import '../../domain/entities/expense.dart';
 import '../../domain/repositories/expense_repository.dart';
+import '../datasources/expense_api_datasource.dart';
+import '../datasources/expense_cache_datasource.dart';
 import '../datasources/expense_local_datasource.dart';
-import '../models/expense_model.dart';
+import '../models/expense_dto.dart';
 
 class ExpenseRepositoryImpl implements ExpenseRepository {
-  final ExpenseLocalDataSource localDataSource;
+  final ExpenseLocalDataSource? localDataSource;
+  final ExpenseApiDataSource apiDataSource;
+  final ExpenseCacheDataSource cacheDataSource;
   final AuthRepository authRepository;
+  final ConnectivityMonitor connectivityMonitor;
+  final QueueManager queueManager;
   final SyncService? syncService;
+  final FileUploadService? fileUploadService;
 
   ExpenseRepositoryImpl({
-    required this.localDataSource,
+    this.localDataSource,
+    required this.apiDataSource,
+    required this.cacheDataSource,
     required this.authRepository,
+    required this.connectivityMonitor,
+    required this.queueManager,
     this.syncService,
+    this.fileUploadService,
   });
 
   @override
@@ -33,20 +49,85 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     required DateTime expenseDate,
   }) async {
     try {
-      final expense = await localDataSource.createExpense(
+      print('[ExpenseRepository] Creating expense for user $userId');
+      print('[ExpenseRepository] Description: $description');
+      
+      // Create DTO for API request
+      // Only include fields that the backend expects
+      final dto = ExpenseDto(
         userId: userId,
         description: description,
         priceUsd: priceUsd,
         priceSyp: priceSyp,
         priceTry: priceTry,
-        invoiceStatus: invoiceStatus,
-        invoiceFilePath: invoiceFilePath,
-        expenseDate: expenseDate,
+        expenseDate: expenseDate.toIso8601String().split('T')[0], // YYYY-MM-DD format
       );
-      return Right(expense);
-    } on DatabaseException catch (e) {
-      return Left(DatabaseFailure(e.message));
+
+      // Try to create via API if online
+      final isOnline = await connectivityMonitor.isOnline;
+      print('[ExpenseRepository] Online status: $isOnline');
+      
+      if (isOnline) {
+        try {
+          print('[ExpenseRepository] Attempting to create via API...');
+          print('[ExpenseRepository] Request body: ${dto.toJson()}');
+          
+          // Prepare photo file if path is provided
+          File? photoFile;
+          if (invoiceFilePath != null && invoiceFilePath.isNotEmpty) {
+            photoFile = File(invoiceFilePath);
+            if (!await photoFile.exists()) {
+              print('[ExpenseRepository] ⚠️ Photo file not found: $invoiceFilePath');
+              photoFile = null;
+            } else {
+              print('[ExpenseRepository] 📷 Photo file found, will upload with expense');
+            }
+          }
+          
+          final createdDto = await apiDataSource.createExpense(dto, photoFile: photoFile);
+          final expense = createdDto.toEntity();
+          
+          print('[ExpenseRepository] ✅ API creation successful! ID: ${expense.id}');
+          if (photoFile != null) {
+            print('[ExpenseRepository] ✅ Photo uploaded successfully');
+            if (createdDto.invoicePath != null && createdDto.invoicePath!.isNotEmpty) {
+              print('[ExpenseRepository] 📥 Server invoice path: ${createdDto.invoicePath}');
+              print('[ExpenseRepository] ℹ️ Photo stored on server, will be displayed from URL');
+            }
+          }
+          
+          // Cache the created expense
+          await cacheDataSource.cacheExpense(createdDto);
+          await cacheDataSource.clearAllCache(); // Clear list caches
+          
+          return Right(expense);
+        } on ApiException catch (e) {
+          print('[ExpenseRepository] ⚠️ API failed: ${e.message}');
+          print('[ExpenseRepository] Status code: ${e.statusCode}');
+          if (e.errors != null) {
+            print('[ExpenseRepository] Validation errors: ${e.errors}');
+          }
+          print('[ExpenseRepository] Queuing for later sync...');
+          // Queue for later sync if API fails
+          final tempExpense = dto.toEntity();
+          await _queueExpenseOperation(tempExpense, QueueOperation.create);
+          return Right(tempExpense);
+        } catch (e) {
+          print('[ExpenseRepository] ⚠️ Unexpected error: $e');
+          print('[ExpenseRepository] Queuing for later sync...');
+          final tempExpense = dto.toEntity();
+          await _queueExpenseOperation(tempExpense, QueueOperation.create);
+          return Right(tempExpense);
+        }
+      } else {
+        print('[ExpenseRepository] Offline - queuing for later sync');
+        // Queue for later sync if offline
+        final tempExpense = dto.toEntity();
+        await _queueExpenseOperation(tempExpense, QueueOperation.create);
+        return Right(tempExpense);
+      }
     } catch (e) {
+      print('[ExpenseRepository] ❌ Unexpected error: $e');
       return Left(DatabaseFailure('Unexpected error: ${e.toString()}'));
     }
   }
@@ -54,11 +135,75 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   @override
   Future<Either<Failure, List<Expense>>> getExpensesByUser(int userId) async {
     try {
-      final expenses = await localDataSource.getExpensesByUser(userId);
-      return Right(expenses);
-    } on DatabaseException catch (e) {
-      return Left(DatabaseFailure(e.message));
-    } catch (e) {
+      print('[ExpenseRepository] 🔵 Loading expenses for user $userId');
+      
+      // NOTE: Data scoping by admin_group_id is handled automatically by the Laravel backend.
+      // The API filters expenses based on the authenticated user's admin_group_id from their token.
+      // Users only see expenses from members of their admin group.
+      // 
+      // ⚠️ IMPORTANT: If expenses have admin_group_id = NULL, they might not be returned by the API.
+      // This is a backend filtering issue that needs to be fixed on the Laravel side.
+      
+      // Cache-first strategy: Try cache first
+      final cachedResponse = await cacheDataSource.getCachedExpenses();
+      if (cachedResponse != null && cachedResponse.data.isNotEmpty) {
+        print('[ExpenseRepository] ✅ Found ${cachedResponse.data.length} expenses in cache');
+        final expenses = cachedResponse.data.map((dto) => dto.toEntity()).toList();
+        return Right(expenses);
+      }
+      
+      print('[ExpenseRepository] No cache found, fetching from API...');
+      print('[ExpenseRepository] 🔍 Requesting expenses from: /expenses?per_page=15');
+      print('[ExpenseRepository] 🔍 Authenticated user ID: $userId');
+
+      // If online, fetch from API
+      final isOnline = await connectivityMonitor.isOnline;
+      print('[ExpenseRepository] Online status: $isOnline');
+      
+      if (isOnline) {
+        try {
+          print('[ExpenseRepository] 📡 Calling API to get expenses...');
+          final response = await apiDataSource.getExpenses();
+          
+          print('[ExpenseRepository] 📥 API Response received:');
+          print('[ExpenseRepository]    - Total expenses: ${response.data.length}');
+          print('[ExpenseRepository]    - Current page: ${response.currentPage}');
+          print('[ExpenseRepository]    - Total pages: ${response.lastPage}');
+          print('[ExpenseRepository]    - Total count: ${response.total}');
+          
+          if (response.data.isEmpty && response.total == 0) {
+            print('[ExpenseRepository] ⚠️ WARNING: API returned empty array but expenses exist in database!');
+            print('[ExpenseRepository] ⚠️ This indicates a backend filtering issue:');
+            print('[ExpenseRepository] ⚠️ 1. Check if expenses have admin_group_id = NULL');
+            print('[ExpenseRepository] ⚠️ 2. Check if authenticated user has matching admin_group_id');
+            print('[ExpenseRepository] ⚠️ 3. Check backend API filtering logic in ExpenseController');
+          }
+          
+          // Cache the response (even if empty)
+          await cacheDataSource.cacheExpenses(response);
+          
+          final expenses = response.data.map((dto) => dto.toEntity()).toList();
+          print('[ExpenseRepository] ✅ Returning ${expenses.length} expenses to UI');
+          return Right(expenses);
+        } on ApiException catch (e) {
+          print('[ExpenseRepository] ❌ API failed: ${e.message}');
+          print('[ExpenseRepository]    Status code: ${e.statusCode}');
+          print('[ExpenseRepository]    Full error: $e');
+          // Return empty list if API fails and no cache
+          return const Right([]);
+        } catch (e, stackTrace) {
+          print('[ExpenseRepository] ❌ Unexpected error: $e');
+          print('[ExpenseRepository]    Stack trace: $stackTrace');
+          return const Right([]);
+        }
+      }
+
+      print('[ExpenseRepository] Offline and no cache - returning empty list');
+      // If offline and no cache, return empty list
+      return const Right([]);
+    } catch (e, stackTrace) {
+      print('[ExpenseRepository] ❌ Unexpected error in getExpensesByUser: $e');
+      print('[ExpenseRepository]    Stack trace: $stackTrace');
       return Left(DatabaseFailure('Unexpected error: ${e.toString()}'));
     }
   }
@@ -66,15 +211,48 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   @override
   Future<Either<Failure, void>> updateExpense(Expense expense) async {
     try {
-      final expenseModel = ExpenseModel.fromEntity(expense);
-      await localDataSource.updateExpense(expenseModel);
-      return const Right(null);
-    } on UnauthorizedException catch (e) {
-      return Left(UnauthorizedFailure(e.message));
-    } on NotFoundException catch (e) {
-      return Left(NotFoundFailure(e.message));
-    } on DatabaseException catch (e) {
-      return Left(DatabaseFailure(e.message));
+      if (expense.id == null) {
+        return const Left(DatabaseFailure('Cannot update expense without ID'));
+      }
+
+      // Try to update via API if online
+      final isOnline = await connectivityMonitor.isOnline;
+      if (isOnline) {
+        try {
+          final dto = ExpenseDto.fromEntity(expense);
+          
+          // Prepare photo file if path is provided
+          File? photoFile;
+          if (expense.invoiceFilePath != null && expense.invoiceFilePath!.isNotEmpty) {
+            photoFile = File(expense.invoiceFilePath!);
+            if (!await photoFile.exists()) {
+              print('[ExpenseRepository] ⚠️ Photo file not found: ${expense.invoiceFilePath}');
+              photoFile = null;
+            } else {
+              print('[ExpenseRepository] 📷 Photo file found, will upload with update');
+            }
+          }
+          
+          await apiDataSource.updateExpense(expense.id!, dto, photoFile: photoFile);
+          
+          if (photoFile != null) {
+            print('[ExpenseRepository] ✅ Photo updated successfully');
+          }
+          
+          // Invalidate cache
+          await cacheDataSource.invalidateExpenseCache(expense.id!);
+          
+          return const Right(null);
+        } on ApiException {
+          // Queue for later sync if API fails
+          await _queueExpenseOperation(expense, QueueOperation.update);
+          return const Right(null);
+        }
+      } else {
+        // Queue for later sync if offline
+        await _queueExpenseOperation(expense, QueueOperation.update);
+        return const Right(null);
+      }
     } catch (e) {
       return Left(DatabaseFailure('Unexpected error: ${e.toString()}'));
     }
@@ -83,12 +261,45 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   @override
   Future<Either<Failure, void>> deleteExpense(int id, int userId) async {
     try {
-      await localDataSource.deleteExpense(id, userId);
+      // Try to sync with API if online
+      final isOnline = await connectivityMonitor.isOnline;
+      if (isOnline) {
+        try {
+          await apiDataSource.deleteExpense(id);
+          
+          // Invalidate cache - both single expense and list caches
+          await cacheDataSource.invalidateExpenseCache(id);
+          await cacheDataSource.clearAllCache(); // Clear list caches to refresh UI
+        } on ApiException {
+          // Queue for later sync if API fails
+          final queueItem = QueueItem(
+            id: '',
+            operation: QueueOperation.delete,
+            resourceType: 'expense',
+            data: {'id': id, 'user_id': userId},
+            createdAt: DateTime.now(),
+            status: QueueStatus.pending,
+            retryCount: 0,
+          );
+          await queueManager.enqueue(queueItem);
+        }
+      } else {
+        // Queue for later sync if offline
+        final queueItem = QueueItem(
+          id: '',
+          operation: QueueOperation.delete,
+          resourceType: 'expense',
+          data: {'id': id, 'user_id': userId},
+          createdAt: DateTime.now(),
+          status: QueueStatus.pending,
+          retryCount: 0,
+        );
+        await queueManager.enqueue(queueItem);
+      }
+
       return const Right(null);
-    } on UnauthorizedException catch (e) {
-      return Left(UnauthorizedFailure());
-    } on DatabaseException catch (e) {
-      return Left(DatabaseFailure(e.message));
+    } on ApiException catch (e) {
+      return Left(ApiFailure(e.message));
     } catch (e) {
       return Left(DatabaseFailure('Unexpected error: ${e.toString()}'));
     }
@@ -159,13 +370,6 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
       }
 
       return result;
-    } on DatabaseException catch (e) {
-      AuthLogger.logDatabaseError(
-        operation: 'fetchAdminExpenses',
-        userId: requestingUserId,
-        error: e.message,
-      );
-      return Left(DatabaseFailure(e.message));
     } catch (e) {
       AuthLogger.logDatabaseError(
         operation: 'fetchAdminExpenses',
@@ -173,6 +377,27 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
         error: e.toString(),
       );
       return Left(DatabaseFailure('Unexpected error: ${e.toString()}'));
+    }
+  }
+
+  /// Helper method to queue expense operations for offline sync
+  Future<void> _queueExpenseOperation(
+    Expense expense,
+    QueueOperation operation,
+  ) async {
+    try {
+      final queueItem = QueueItem(
+        id: '',
+        operation: operation,
+        resourceType: 'expense',
+        data: ExpenseDto.fromEntity(expense).toJson(),
+        createdAt: DateTime.now(),
+        status: QueueStatus.pending,
+        retryCount: 0,
+      );
+      await queueManager.enqueue(queueItem);
+    } catch (e) {
+      // Silently fail queue operations
     }
   }
 }

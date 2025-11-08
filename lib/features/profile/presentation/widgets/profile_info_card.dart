@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../auth/domain/entities/user.dart';
 
 /// Card displaying user profile information
@@ -17,6 +18,8 @@ class ProfileInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Card(
       elevation: 4,
       child: Padding(
@@ -83,7 +86,7 @@ class ProfileInfoCard extends StatelessWidget {
             
             // Account Creation Date
             Text(
-              'Member since ${_formatDate(user.createdAt)}',
+              '${l10n.memberSince} ${_formatDate(user.createdAt)}',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.grey[500],
               ),
@@ -94,7 +97,7 @@ class ProfileInfoCard extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onEditPressed,
               icon: const Icon(Icons.edit),
-              label: const Text('Edit Profile'),
+              label: Text(l10n.editProfile ?? 'Edit Profile'),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 40),
               ),

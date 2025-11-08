@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/repositories/profile_repository.dart';
 import '../../domain/usecases/get_user_profile_usecase.dart';
 import '../../domain/usecases/update_user_profile_usecase.dart';
 import '../../domain/usecases/update_profile_picture_usecase.dart';
@@ -10,15 +11,19 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final GetUserProfileUseCase getUserProfileUseCase;
   final UpdateUserProfileUseCase updateUserProfileUseCase;
   final UpdateProfilePictureUseCase updateProfilePictureUseCase;
+  final ProfileRepository profileRepository;
 
   ProfileBloc({
     required this.getUserProfileUseCase,
     required this.updateUserProfileUseCase,
     required this.updateProfilePictureUseCase,
+    required this.profileRepository,
   }) : super(const ProfileInitial()) {
     on<ProfileLoadRequested>(_onProfileLoadRequested);
     on<ProfileUpdateRequested>(_onProfileUpdateRequested);
     on<ProfilePictureUpdateRequested>(_onProfilePictureUpdateRequested);
+    on<ProfilePasswordChangeRequested>(_onPasswordChangeRequested);
+    on<ProfileDeleteAccountRequested>(_onDeleteAccountRequested);
   }
 
   Future<void> _onProfileLoadRequested(
@@ -90,6 +95,37 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           )),
         );
       },
+    );
+  }
+
+  Future<void> _onPasswordChangeRequested(
+    ProfilePasswordChangeRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(const ProfileLoading());
+
+    final result = await profileRepository.changePassword(
+      currentPassword: event.currentPassword,
+      newPassword: event.newPassword,
+    );
+
+    result.fold(
+      (failure) => emit(ProfileError(message: failure.message)),
+      (_) => emit(const ProfilePasswordChangeSuccess()),
+    );
+  }
+
+  Future<void> _onDeleteAccountRequested(
+    ProfileDeleteAccountRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(const ProfileLoading());
+
+    final result = await profileRepository.deleteAccount();
+
+    result.fold(
+      (failure) => emit(ProfileError(message: failure.message)),
+      (_) => emit(const ProfileAccountDeleted()),
     );
   }
 }

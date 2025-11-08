@@ -7,6 +7,9 @@ class FundBoxModel extends FundBox {
     required super.id,
     required super.userId,
     required super.balanceUsd,
+    required super.balanceSyp,
+    required super.balanceTry,
+    super.lastCalculatedAt,
     required super.updatedAt,
   });
 
@@ -16,6 +19,9 @@ class FundBoxModel extends FundBox {
       id: fundBox.id,
       userId: fundBox.userId,
       balanceUsd: fundBox.balanceUsd,
+      balanceSyp: fundBox.balanceSyp,
+      balanceTry: fundBox.balanceTry,
+      lastCalculatedAt: fundBox.lastCalculatedAt,
       updatedAt: fundBox.updatedAt,
     );
   }
@@ -25,7 +31,12 @@ class FundBoxModel extends FundBox {
     return FundBoxModel(
       id: map['id'] as int,
       userId: map['user_id'] as int,
-      balanceUsd: (map['balance_usd'] as num).toDouble(),
+      balanceUsd: (map['balance_usd'] as num?)?.toDouble() ?? 0.0,
+      balanceSyp: (map['balance_syp'] as num?)?.toDouble() ?? 0.0,
+      balanceTry: (map['balance_try'] as num?)?.toDouble() ?? 0.0,
+      lastCalculatedAt: map['last_calculated_at'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['last_calculated_at'] as int)
+          : null,
       updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updated_at'] as int),
     );
   }
@@ -36,6 +47,9 @@ class FundBoxModel extends FundBox {
       'id': id,
       'user_id': userId,
       'balance_usd': balanceUsd,
+      'balance_syp': balanceSyp,
+      'balance_try': balanceTry,
+      'last_calculated_at': lastCalculatedAt?.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
     };
   }
@@ -46,12 +60,18 @@ class FundBoxModel extends FundBox {
     int? id,
     int? userId,
     double? balanceUsd,
+    double? balanceSyp,
+    double? balanceTry,
+    DateTime? lastCalculatedAt,
     DateTime? updatedAt,
   }) {
     return FundBoxModel(
       id: id ?? this.id,
       userId: userId ?? this.userId,
       balanceUsd: balanceUsd ?? this.balanceUsd,
+      balanceSyp: balanceSyp ?? this.balanceSyp,
+      balanceTry: balanceTry ?? this.balanceTry,
+      lastCalculatedAt: lastCalculatedAt ?? this.lastCalculatedAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }

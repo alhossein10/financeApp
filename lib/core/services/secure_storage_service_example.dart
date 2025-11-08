@@ -7,6 +7,7 @@
 /// DO NOT include this file in production builds.
 /// This is for demonstration purposes only.
 /// Sensitive data like tokens and passwords are redacted in print statements.
+library;
 
 import 'secure_storage_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';

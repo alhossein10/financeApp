@@ -43,9 +43,28 @@ class FundBoxUpdating extends FundBoxState {
 /// State when an error occurs
 class FundBoxError extends FundBoxState {
   final String message;
+  final bool requiresLogout;
+  final bool isForbidden;
+  final bool isValidationError;
+  final bool isRateLimited;
+  final int? retryAfterSeconds;
 
-  const FundBoxError(this.message);
+  const FundBoxError(
+    this.message, {
+    this.requiresLogout = false,
+    this.isForbidden = false,
+    this.isValidationError = false,
+    this.isRateLimited = false,
+    this.retryAfterSeconds,
+  });
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [
+        message,
+        requiresLogout,
+        isForbidden,
+        isValidationError,
+        isRateLimited,
+        retryAfterSeconds,
+      ];
 }

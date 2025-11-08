@@ -27,4 +27,15 @@ class DateFilterNotifier extends ValueNotifier<DateFilter> {
   static final DateFilterNotifier instance = DateFilterNotifier();
 }
 
+class UserFilterNotifier extends ValueNotifier<String?> {
+  UserFilterNotifier() : super(null);
+
+  static final UserFilterNotifier instance = UserFilterNotifier();
+}
+
+class RecipientFilterNotifier extends ValueNotifier<String?> {
+  RecipientFilterNotifier() : super(null);
+
+  static final RecipientFilterNotifier instance = RecipientFilterNotifier();
+}
 

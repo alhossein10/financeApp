@@ -32,8 +32,19 @@ class WelcomePage extends StatelessWidget {
               children: [
                 const Spacer(),
                 
-                // Branded App Logo
-                const AppLogo(size: 120, showText: true),
+                // Eagle with text logo (prominently displayed)
+                Center(
+                  child: Image.asset(
+                    'assets/images/eagle_with_text.png',
+                    width: 280,
+                    height: 280,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to AppLogo if image not found
+                      return const AppLogo(size: 120, showText: true);
+                    },
+                  ),
+                ),
                 
                 const Spacer(),
               

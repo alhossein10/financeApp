@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/validators.dart';
+import '../../../../core/config/flavor_config.dart';
+import '../../../admin_group/presentation/widgets/group_code_input.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/auth_text_field.dart';
+import '../widgets/admin_registration_success_dialog.dart';
+import '../widgets/superadmin_registration_success_dialog.dart';
+import '../../../../core/widgets/watermark_background.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -20,8 +26,28 @@ class _RegisterPageState extends State<RegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _organizationNameController = TextEditingController();
+  final _departmentNameController = TextEditingController();
+  final _groupCodeController = TextEditingController();
+  final _superAdminGroupCodeController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  // Get role based on flavor
+  String get _role {
+    if (FlavorConfig.instance.isSuperAdmin) {
+      return 'superAdmin';
+    } else if (FlavorConfig.instance.isAdmin) {
+      return 'admin';
+    } else {
+      return 'user';
+    }
+  }
 
   @override
   void dispose() {
@@ -29,21 +55,102 @@ class _RegisterPageState extends State<RegisterPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _organizationNameController.dispose();
+    _departmentNameController.dispose();
+    _groupCodeController.dispose();
+    _superAdminGroupCodeController.dispose();
     super.dispose();
   }
 
   void _handleRegister() {
     if (_formKey.currentState?.validate() ?? false) {
+      final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+      final role = _role;
+      
+      // SuperAdmin flavor: no group code needed (backend generates it)
+      // Admin flavor: SuperAdmin group code is required
+      // User flavor: admin group code is required
+      
+      String? groupCode;
+      String? superAdminGroupCode;
+      
+      if (FlavorConfig.instance.isAdmin) {
+        // Admin flavor: require SuperAdmin group code
+        final superAdminCode = _superAdminGroupCodeController.text.trim();
+        if (superAdminCode.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isArabic ? 'رمز مجموعة SuperAdmin مطلوب' : 'SuperAdmin group code is required',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        
+        if (superAdminCode.length != 6) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isArabic ? 'رمز مجموعة SuperAdmin يجب أن يكون 6 أحرف' : 'SuperAdmin group code must be 6 characters',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        superAdminGroupCode = superAdminCode;
+      } else if (FlavorConfig.instance.isUser) {
+        // User flavor: require admin group code
+        final adminCode = _groupCodeController.text.trim();
+        if (adminCode.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isArabic ? 'رمز المجموعة مطلوب' : 'Group code is required',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        
+        if (adminCode.length != 6) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isArabic ? 'رمز المجموعة يجب أن يكون 6 أحرف' : 'Group code must be 6 characters',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        groupCode = adminCode;
+      }
+      // SuperAdmin flavor: no group code validation needed
+      
+      // Dispatch RegisterSubmittedEvent with new fields
       context.read<AuthBloc>().add(
             AuthRegisterRequested(
               username: _usernameController.text.trim(),
               email: _emailController.text.trim(),
               password: _passwordController.text,
               confirmPassword: _confirmPasswordController.text,
+              organizationName: _organizationNameController.text.trim(),
+              departmentName: _departmentNameController.text.trim().isEmpty 
+                  ? null 
+                  : _departmentNameController.text.trim(),
+              groupCode: groupCode,
+              superAdminGroupCode: superAdminGroupCode,
+              role: role,
             ),
           );
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -54,35 +161,79 @@ class _RegisterPageState extends State<RegisterPage> {
         title: Text(isArabic ? 'إنشاء حساب جديد' : 'Create Account'),
         centerTitle: true,
       ),
-      body: BlocConsumer<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-              ),
-            );
-          } else if (state is AuthAuthenticated) {
-            // Show success message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  isArabic
-                      ? 'تم إنشاء الحساب بنجاح!'
-                      : 'Account created successfully!',
+      body: WatermarkBackground(
+        child: BlocConsumer<AuthBloc, AuthState>(
+          listener: (context, state) {
+            // Handle registration failure with error message
+            if (state.status == AuthStatus.error && state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage!),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 4),
                 ),
-                backgroundColor: Colors.green,
-              ),
-            );
-            // Navigate to home screen
-            Navigator.of(context).pushReplacementNamed('/home');
-          }
-        },
-        builder: (context, state) {
-          final isLoading = state is AuthLoading;
+              );
+            } 
+            // Legacy support for AuthError state
+            else if (state is AuthError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage ?? 'An error occurred'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            } 
+            // Handle registration success
+            else if (state.status == AuthStatus.authenticated || state is AuthAuthenticated) {
+              // Get registration result from state
+              final registrationResult = state.registrationResult;
+              final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+              
+              // For SuperAdmin users, show SuperAdmin group code dialog (auto-generated by backend)
+              if (FlavorConfig.instance.isSuperAdmin && registrationResult?.superAdminGroupCode != null) {
+                // Show dialog and navigate after dismissal
+                SuperAdminRegistrationSuccessDialog.show(
+                  context: context,
+                  groupCode: registrationResult!.superAdminGroupCode!,
+                  adminGroupName: registrationResult.adminGroupName ?? 'SuperAdmin Group',
+                ).then((_) {
+                  // Check if widget is still mounted before navigating
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacementNamed('/home');
+                  }
+                });
+              }
+              // For admin users, show admin group code dialog
+              else if (FlavorConfig.instance.isAdmin && registrationResult?.groupCode != null) {
+                AdminRegistrationSuccessDialog.show(
+                  context: context,
+                  groupCode: registrationResult!.groupCode!,
+                  isSuperAdmin: false,
+                  onContinue: () {
+                    Navigator.of(context).pushReplacementNamed('/home');
+                  },
+                );
+              } else {
+                // For regular users, show success message and navigate
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isArabic
+                          ? 'تم إنشاء الحساب بنجاح!'
+                          : 'Account created successfully!',
+                    ),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                Navigator.of(context).pushReplacementNamed('/home');
+              }
+            }
+          },
+          builder: (context, state) {
+            final isLoading = state.status == AuthStatus.loading || state is AuthLoading;
 
-          return SafeArea(
+            return SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Form(
@@ -92,8 +243,19 @@ class _RegisterPageState extends State<RegisterPage> {
                   children: [
                     const SizedBox(height: 20),
 
-                    // App Logo
-                    const AppLogo(size: 80, showText: false),
+                    // Eagle with text logo
+                    Center(
+                      child: Image.asset(
+                        'assets/images/eagle_with_text.png',
+                        width: 200,
+                        height: 200,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          // Fallback to AppLogo if image not found
+                          return const AppLogo(size: 80, showText: false);
+                        },
+                      ),
+                    ),
                     const SizedBox(height: 24),
 
                     // Welcome Text
@@ -198,7 +360,72 @@ class _RegisterPageState extends State<RegisterPage> {
                         },
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
+
+                    // Organization Name Field (required)
+                    AuthTextField(
+                      controller: _organizationNameController,
+                      label: isArabic ? 'اسم المنظمة' : 'Organization Name',
+                      hint: isArabic ? 'أدخل اسم المنظمة' : 'Enter organization name',
+                      enabled: !isLoading,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return isArabic ? 'اسم المنظمة مطلوب' : 'Organization name is required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Department Name Field (optional)
+                    AuthTextField(
+                      controller: _departmentNameController,
+                      label: isArabic ? 'اسم القسم (اختياري)' : 'Department Name (optional)',
+                      hint: isArabic ? 'أدخل اسم القسم' : 'Enter department name',
+                      enabled: !isLoading,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Group Code Input based on flavor
+                    // SuperAdmin flavor: no group code field (backend generates it)
+                    // Admin flavor: SuperAdmin group code (required)
+                    // User flavor: admin group code (required)
+                    if (FlavorConfig.instance.isAdmin)
+                      AuthTextField(
+                        controller: _superAdminGroupCodeController,
+                        label: isArabic ? 'رمز مجموعة SuperAdmin' : 'SuperAdmin Group Code',
+                        hint: isArabic ? 'أدخل رمز مجموعة SuperAdmin للانضمام' : 'Enter SuperAdmin group code to join',
+                        enabled: !isLoading,
+                        validator: (value) {
+                          // Required field for admin flavor
+                          if (value == null || value.trim().isEmpty) {
+                            return isArabic
+                                ? 'رمز مجموعة SuperAdmin مطلوب'
+                                : 'SuperAdmin group code is required';
+                          }
+                          if (value.trim().length != 6) {
+                            return isArabic
+                                ? 'يجب أن يكون رمز المجموعة 6 أحرف'
+                                : 'Group code must be 6 characters';
+                          }
+                          if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value.trim())) {
+                            return isArabic
+                                ? 'يجب أن يحتوي رمز المجموعة على أحرف وأرقام فقط'
+                                : 'Group code must contain only letters and numbers';
+                          }
+                          return null;
+                        },
+                      ),
+                    if (FlavorConfig.instance.isAdmin)
+                      const SizedBox(height: 16),
+                    
+                    if (FlavorConfig.instance.isUser)
+                      GroupCodeInput(
+                        controller: _groupCodeController,
+                        enabled: !isLoading,
+                      ),
+                    if (FlavorConfig.instance.isUser)
+                      const SizedBox(height: 16),
 
                     // Register Button
                     ElevatedButton(
@@ -255,7 +482,8 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
           );
-        },
+          },
+        ),
       ),
     );
   }

@@ -98,3 +98,11 @@ class SyncStatusUpdated extends ExpenseEvent {
   @override
   List<Object?> get props => [syncStatusMap];
 }
+
+class CheckQueueStatusRequested extends ExpenseEvent {
+  const CheckQueueStatusRequested();
+}
+
+class ProcessOfflineQueueRequested extends ExpenseEvent {
+  const ProcessOfflineQueueRequested();
+}

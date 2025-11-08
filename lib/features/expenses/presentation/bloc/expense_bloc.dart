@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/error/failures.dart';
+import '../../../../core/services/queue_manager.dart';
 import '../../../../core/services/sync_service.dart';
+import '../../../../core/utils/error_handler.dart';
 import '../../domain/entities/expense.dart';
 import '../../domain/usecases/create_expense_usecase.dart';
 import '../../domain/usecases/delete_expense_usecase.dart';
@@ -15,8 +18,10 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
   final UpdateExpenseUseCase updateExpenseUseCase;
   final DeleteExpenseUseCase deleteExpenseUseCase;
   final SyncService syncService;
+  final QueueManager queueManager;
 
   StreamSubscription? _syncStatusSubscription;
+  StreamSubscription? _queueStatusSubscription;
   final Map<int, SyncStatus> _syncStatusMap = {};
 
   ExpenseBloc({
@@ -25,6 +30,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     required this.updateExpenseUseCase,
     required this.deleteExpenseUseCase,
     required this.syncService,
+    required this.queueManager,
   }) : super(const ExpenseInitial()) {
     on<CreateExpenseRequested>(_onCreateExpenseRequested);
     on<LoadExpensesRequested>(_onLoadExpensesRequested);
@@ -33,12 +39,20 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     on<SyncExpenseRequested>(_onSyncExpenseRequested);
     on<SyncAllPendingRequested>(_onSyncAllPendingRequested);
     on<SyncStatusUpdated>(_onSyncStatusUpdated);
+    on<CheckQueueStatusRequested>(_onCheckQueueStatusRequested);
+    on<ProcessOfflineQueueRequested>(_onProcessOfflineQueueRequested);
+
+    // Listen to queue status changes
+    _queueStatusSubscription = queueManager.queueStatus.listen((status) {
+      add(const CheckQueueStatusRequested());
+    });
   }
 
   Future<void> _onCreateExpenseRequested(
     CreateExpenseRequested event,
     Emitter<ExpenseState> emit,
   ) async {
+    print('[ExpenseBloc] Creating expense: ${event.description}');
     emit(ExpenseLoading(syncStatusMap: _syncStatusMap));
 
     final params = CreateExpenseParams(
@@ -55,8 +69,16 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     final result = await createExpenseUseCase(params);
 
     result.fold(
-      (failure) => emit(ExpenseError(failure.message, syncStatusMap: _syncStatusMap)),
+      (failure) {
+        print('[ExpenseBloc] ❌ Failed to create expense: ${failure.message}');
+        _handleError(failure, emit);
+      },
       (expense) {
+        print('[ExpenseBloc] ✅ Expense created successfully!');
+        print('[ExpenseBloc]    ID: ${expense.id}');
+        print('[ExpenseBloc]    Description: ${expense.description}');
+        print('[ExpenseBloc]    USD: ${expense.priceUsd}, SYP: ${expense.priceSyp}, TRY: ${expense.priceTry}');
+        
         // Start watching sync status for this expense
         if (expense.id != null) {
           _watchExpenseSyncStatus(expense.id!);
@@ -75,7 +97,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     final result = await getExpensesUseCase(event.userId);
 
     result.fold(
-      (failure) => emit(ExpenseError(failure.message, syncStatusMap: _syncStatusMap)),
+      (failure) => _handleError(failure, emit),
       (expenses) {
         // Watch sync status for all loaded expenses
         for (final expense in expenses) {
@@ -102,7 +124,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     final result = await updateExpenseUseCase(params);
 
     result.fold(
-      (failure) => emit(ExpenseError(failure.message, syncStatusMap: _syncStatusMap)),
+      (failure) => _handleError(failure, emit),
       (_) => emit(ExpenseUpdated(syncStatusMap: _syncStatusMap)),
     );
   }
@@ -121,7 +143,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     final result = await deleteExpenseUseCase(params);
 
     result.fold(
-      (failure) => emit(ExpenseError(failure.message, syncStatusMap: _syncStatusMap)),
+      (failure) => _handleError(failure, emit),
       (_) => emit(ExpenseDeleted(syncStatusMap: _syncStatusMap)),
     );
   }
@@ -135,7 +157,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     final result = await syncService.syncExpense(event.expense);
 
     result.fold(
-      (failure) => emit(ExpenseSyncError(failure.message, syncStatusMap: _syncStatusMap)),
+      (failure) => _handleError(failure, emit, isSyncError: true),
       (_) => emit(ExpenseSynced(syncStatusMap: _syncStatusMap)),
     );
   }
@@ -149,7 +171,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     final result = await syncService.syncPendingExpenses();
 
     result.fold(
-      (failure) => emit(ExpenseSyncError(failure.message, syncStatusMap: _syncStatusMap)),
+      (failure) => _handleError(failure, emit, isSyncError: true),
       (_) => emit(ExpenseSynced(syncStatusMap: _syncStatusMap)),
     );
   }
@@ -180,9 +202,77 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     });
   }
 
+  Future<void> _onCheckQueueStatusRequested(
+    CheckQueueStatusRequested event,
+    Emitter<ExpenseState> emit,
+  ) async {
+    try {
+      final stats = await queueManager.getStatistics();
+      final pendingCount = stats['pending'] as int? ?? 0;
+      final failedCount = stats['failed'] as int? ?? 0;
+
+      emit(ExpenseQueueStatusUpdated(
+        pendingCount: pendingCount,
+        failedCount: failedCount,
+        syncStatusMap: Map.from(_syncStatusMap),
+      ));
+    } catch (e) {
+      // Silently fail queue status check
+    }
+  }
+
+  Future<void> _onProcessOfflineQueueRequested(
+    ProcessOfflineQueueRequested event,
+    Emitter<ExpenseState> emit,
+  ) async {
+    emit(ExpenseSyncing(syncStatusMap: _syncStatusMap));
+
+    try {
+      await queueManager.processQueue();
+      
+      // Check queue status after processing
+      add(const CheckQueueStatusRequested());
+      
+      emit(ExpenseSynced(syncStatusMap: _syncStatusMap));
+    } catch (e) {
+      emit(ExpenseSyncError(
+        'Failed to process offline queue: ${e.toString()}',
+        syncStatusMap: _syncStatusMap,
+      ));
+    }
+  }
+
+  /// Enhanced error handling with support for 401, 403, 422, 429
+  void _handleError(Failure failure, Emitter<ExpenseState> emit, {bool isSyncError = false}) {
+    final errorResult = ErrorHandler.createEnhancedError(failure);
+    
+    if (isSyncError) {
+      emit(ExpenseSyncError(
+        errorResult.displayMessage,
+        syncStatusMap: _syncStatusMap,
+        requiresLogout: errorResult.requiresLogout,
+        isForbidden: errorResult.isForbidden,
+        isValidationError: errorResult.isValidationError,
+        isRateLimited: errorResult.isRateLimited,
+        retryAfterSeconds: errorResult.retryAfterDuration?.inSeconds,
+      ));
+    } else {
+      emit(ExpenseError(
+        errorResult.displayMessage,
+        syncStatusMap: _syncStatusMap,
+        requiresLogout: errorResult.requiresLogout,
+        isForbidden: errorResult.isForbidden,
+        isValidationError: errorResult.isValidationError,
+        isRateLimited: errorResult.isRateLimited,
+        retryAfterSeconds: errorResult.retryAfterDuration?.inSeconds,
+      ));
+    }
+  }
+
   @override
   Future<void> close() {
     _syncStatusSubscription?.cancel();
+    _queueStatusSubscription?.cancel();
     return super.close();
   }
 }

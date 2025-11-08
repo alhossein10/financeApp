@@ -33,6 +33,12 @@ android {
     flavorDimensions += "version"
     
     productFlavors {
+        create("superAdmin") {
+            dimension = "version"
+            applicationId = "com.app.finance.superadmin"
+            resValue("string", "app_name", "Finance SuperAdmin")
+        }
+        
         create("admin") {
             dimension = "version"
             applicationId = "com.app.finance.admin"
@@ -51,6 +57,12 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            
+            // DISABLED: Code shrinking and minification to avoid R8 errors
+            // Split APKs still provide significant size reduction (~30-40 MB savings)
+            // To re-enable minification later, set isMinifyEnabled = true
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

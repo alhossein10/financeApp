@@ -20,4 +20,13 @@ abstract class ProfileRepository {
     required int userId,
     required String imagePath,
   });
+  
+  /// Change user password
+  Future<Either<Failure, void>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+  
+  /// Delete user account
+  Future<Either<Failure, void>> deleteAccount();
 }

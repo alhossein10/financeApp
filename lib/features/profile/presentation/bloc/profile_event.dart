@@ -38,3 +38,22 @@ class ProfilePictureUpdateRequested extends ProfileEvent {
   @override
   List<Object?> get props => [imagePath];
 }
+
+/// Event to change password
+class ProfilePasswordChangeRequested extends ProfileEvent {
+  final String currentPassword;
+  final String newPassword;
+
+  const ProfilePasswordChangeRequested({
+    required this.currentPassword,
+    required this.newPassword,
+  });
+
+  @override
+  List<Object?> get props => [currentPassword, newPassword];
+}
+
+/// Event to delete account
+class ProfileDeleteAccountRequested extends ProfileEvent {
+  const ProfileDeleteAccountRequested();
+}

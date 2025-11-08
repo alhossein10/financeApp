@@ -1,0 +1,127 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Firebase configuration files (sensitive)
+android/app/google-services.json
+android/app/src/admin/google-services*.json
+android/app/src/user/google-services*.json
+ios/Runner/GoogleService-Info.plist
+ios/Runner/Firebase/**/*.plist
+!ios/Runner/Firebase/**/.gitkeep
+firebase-debug.log
+.firebase/
+
+# Local database files - ALLOWING for Supabase migration reference
+# *.db
+# *.db-shm
+# *.db-wal
+# *.sqlite
+# *.sqlite3
+# Note: Database files are included for Supabase migration purposes
+
+# Environment files (may contain secrets)
+.env
+.env.local
+.env.*.local
+*.env
+
+# API keys and secrets
+**/secrets.dart
+**/api_keys.dart
+
+# PocketBase data (if running locally) - ALLOWING for Supabase migration
+# pocketbase-backend-files/pb_data/
+# pocketbase-backend-files/*.db
+# Note: PocketBase files included for Supabase migration reference
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+*.app
+*.dSYM.zip
+*.dSYM
+
+# Release builds directory
+/releases/
+
+# Keystore files (NEVER commit these!)
+*.jks
+*.keystore
+key.properties
+keystore.properties
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# Coverage
+coverage/
+*.lcov
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Documentation build artifacts (keep source .md files)
+# But exclude generated docs
+doc/api/

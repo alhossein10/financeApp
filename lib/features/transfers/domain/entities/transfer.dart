@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 class Transfer extends Equatable {
   final int? id;
   final int userId;
+  final int? recipientUserId; // ID of the user who receives the transfer
   final String recipientName;
   final double amountUsd;
   final double? convertedAmountUsd;
@@ -15,6 +16,7 @@ class Transfer extends Equatable {
   const Transfer({
     this.id,
     required this.userId,
+    this.recipientUserId,
     required this.recipientName,
     required this.amountUsd,
     this.convertedAmountUsd,
@@ -29,6 +31,7 @@ class Transfer extends Equatable {
   List<Object?> get props => [
         id,
         userId,
+        recipientUserId,
         recipientName,
         amountUsd,
         convertedAmountUsd,

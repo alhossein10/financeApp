@@ -1,8 +1,11 @@
-import 'package:sqflite/sqflite.dart';
-import '../error/exceptions.dart';
+// Removed sqflite - using alternative storage
+
+// Type alias for compatibility - this version doesn't use sqflite
+typedef Database = dynamic;
 
 /// Service for security auditing and monitoring
 /// Tracks login attempts, failed authentications, and suspicious activities
+/// NOTE: This is a stub for Laravel version - security auditing handled by backend
 class SecurityAuditService {
   final Database database;
 

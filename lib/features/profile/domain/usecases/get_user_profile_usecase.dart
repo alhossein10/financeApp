@@ -17,24 +17,47 @@ class GetUserProfileUseCase {
 
   /// Get current user profile with statistics
   Future<Either<Failure, UserProfileData>> call() async {
-    // Get current user
-    final userResult = await authRepository.getCurrentUser();
-    if (userResult.isLeft()) {
-      return Left(UnauthorizedFailure());
-    }
+    try {
+      // Get current user
+      final userResult = await authRepository.getCurrentUser();
+      if (userResult.isLeft()) {
+        print('[GetUserProfileUseCase] Failed to get current user');
+        return Left(UnauthorizedFailure());
+      }
 
-    final user = userResult.getOrElse(() => throw Exception());
+      final user = userResult.getOrElse(() => throw Exception());
+      print('[GetUserProfileUseCase] Got user: ${user.username} (ID: ${user.id})');
 
-    // Get user statistics
-    final statisticsResult = await profileRepository.getUserStatistics(user.id);
-    
-    return statisticsResult.fold(
-      (failure) => Left(failure),
-      (statistics) => Right(UserProfileData(
+      // Get user statistics - don't fail if statistics fail
+      final statisticsResult = await profileRepository.getUserStatistics(user.id);
+      
+      final statistics = statisticsResult.fold(
+        (failure) {
+          // Return empty statistics instead of failing
+          print('[GetUserProfileUseCase] Failed to load statistics: ${failure.message}');
+          print('[GetUserProfileUseCase] Using empty statistics as fallback');
+          return const UserStatistics(
+            totalExpenses: 0.0,
+            totalTransfers: 0.0,
+            totalTransactions: 0,
+            accountAgeDays: 0,
+            lastActivity: null,
+          );
+        },
+        (stats) {
+          print('[GetUserProfileUseCase] Loaded statistics successfully');
+          return stats;
+        },
+      );
+
+      return Right(UserProfileData(
         user: user,
         statistics: statistics,
-      )),
-    );
+      ));
+    } catch (e) {
+      print('[GetUserProfileUseCase] Unexpected error: $e');
+      return Left(ServerFailure('Failed to load profile: ${e.toString()}'));
+    }
   }
 }
 

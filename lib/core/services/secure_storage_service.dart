@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:crypto/crypto.dart';
-import 'dart:typed_data';
-import 'package:crypto/crypto.dart' as crypto;
 
 /// Service for securely storing and retrieving sensitive data
 /// Provides encryption for sensitive data before storage

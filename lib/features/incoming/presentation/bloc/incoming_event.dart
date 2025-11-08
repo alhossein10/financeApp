@@ -48,3 +48,11 @@ class DeleteIncoming extends IncomingEvent {
   @override
   List<Object?> get props => [id, refund];
 }
+
+class CheckConnectivityStatus extends IncomingEvent {
+  const CheckConnectivityStatus();
+}
+
+class ProcessOfflineQueue extends IncomingEvent {
+  const ProcessOfflineQueue();
+}

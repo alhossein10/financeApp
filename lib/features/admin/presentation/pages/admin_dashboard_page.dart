@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/config/flavor_config.dart';
+import '../../../../core/widgets/role_based_widget.dart';
+import '../../../../core/widgets/watermark_background.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
 import '../bloc/admin_bloc.dart';
 import '../bloc/admin_event.dart';
 import '../bloc/admin_state.dart';
@@ -19,11 +23,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   void initState() {
     super.initState();
     
-    // Only load data if admin flavor
+    // Only load data if admin flavor and user is admin
     if (FlavorConfig.instance.isAdmin) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<AdminBloc>().add(const FetchAdminStatisticsRequested());
-        context.read<AdminBloc>().add(const FetchAllUserExpensesRequested());
+        // Check if user is actually admin before loading data
+        if (context.isAdmin) {
+          context.read<AdminBloc>().add(const FetchAdminStatisticsRequested());
+          context.read<AdminBloc>().add(const FetchAllUserExpensesRequested());
+        }
       });
     }
   }
@@ -32,14 +39,58 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     
-    // Check if admin flavor
+    // Check if admin flavor is enabled
     if (!FlavorConfig.instance.isAdmin) {
       return Scaffold(
         appBar: AppBar(
           title: Text(l10n.translate('admin_dashboard')),
         ),
         body: Center(
-          child: Text(l10n.translate('unauthorized_access')),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                l10n.translate('unauthorized_access'),
+                style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'This feature is only available in the admin version of the app.',
+                style: TextStyle(color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    // Check if user has admin role
+    if (!context.isAdmin) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.translate('admin_dashboard')),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.admin_panel_settings_outlined, size: 64, color: Colors.orange),
+              const SizedBox(height: 16),
+              Text(
+                'Access Denied',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Admin privileges required to access this feature.',
+                style: TextStyle(color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -47,7 +98,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.translate('admin_dashboard')),
+        automaticallyImplyLeading: false, // Remove back arrow
         actions: [
+          IconButton(
+            icon: const Icon(Icons.group),
+            tooltip: 'Group Management',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/group-management');
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -57,8 +116,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ),
         ],
       ),
-      body: BlocBuilder<AdminBloc, AdminState>(
-        builder: (context, state) {
+      body: WatermarkBackground(
+        child: BlocBuilder<AdminBloc, AdminState>(
+          builder: (context, state) {
           if (state is AdminLoading) {
             return const Center(
               child: CircularProgressIndicator(),
@@ -66,6 +126,44 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           }
           
           if (state is AdminError) {
+            // Handle 403 Forbidden errors specially
+            if (state.isForbidden) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.admin_panel_settings_outlined, size: 64, color: Colors.orange),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Access Denied',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      state.message,
+                      style: TextStyle(color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text(l10n.translate('go_back') ?? 'Go Back'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            
+            // Handle logout required errors
+            if (state.requiresLogout) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.read<AuthBloc>().add(AuthLogoutRequested());
+                Navigator.of(context).pushReplacementNamed('/login');
+              });
+            }
+            
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -117,7 +215,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           return Center(
             child: Text(l10n.translate('no_data_available')),
           );
-        },
+          },
+        ),
       ),
     );
   }
@@ -185,26 +284,33 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return Card(
       elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
+            Icon(icon, size: 28, color: color),
+            const SizedBox(height: 6),
+            Flexible(
+              child: Text(
+                value,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            Flexible(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -367,7 +473,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 ),
                 title: Text(username),
                 trailing: Chip(
-                  label: Text('$count ${l10n.translate('expenses')}'),
+                  label: Text('$count ${l10n.translate('expenses') ?? 'expenses'}'),
                   backgroundColor: Colors.blue.withOpacity(0.2),
                 ),
               ),

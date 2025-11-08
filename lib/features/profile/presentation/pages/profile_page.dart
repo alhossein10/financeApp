@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../../injection_container.dart';
+import '../../../../injection_container.dart' as di;
+import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../onboarding/presentation/pages/onboarding_page.dart';
@@ -13,6 +13,10 @@ import '../bloc/profile_state.dart';
 import '../widgets/profile_info_card.dart';
 import '../widgets/profile_statistics_card.dart';
 import '../widgets/edit_profile_dialog.dart';
+import '../../../../core/widgets/watermark_background.dart';
+import '../../../../core/config/flavor_config.dart';
+import '../../../admin_group/presentation/pages/join_superadmin_group_page.dart';
+import '../../../admin_group/presentation/bloc/admin_group_bloc.dart';
 
 /// Profile page showing user information and statistics
 class ProfilePage extends StatelessWidget {
@@ -21,7 +25,7 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => sl<ProfileBloc>()..add(const ProfileLoadRequested()),
+      create: (context) => di.sl<ProfileBloc>()..add(const ProfileLoadRequested()),
       child: const ProfileView(),
     );
   }
@@ -42,8 +46,9 @@ class ProfileView extends StatelessWidget {
           ),
         ],
       ),
-      body: BlocConsumer<ProfileBloc, ProfileState>(
-        listener: (context, state) {
+      body: WatermarkBackground(
+        child: BlocConsumer<ProfileBloc, ProfileState>(
+          listener: (context, state) {
           if (state is ProfileError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -149,8 +154,79 @@ class ProfileView extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     
-                    // Database Management Button (Admin only)
+                    // Group Management Button (Admin only)
                     if (profileData.user.role == 1) ...[
+                      OutlinedButton.icon(
+                        onPressed: () => _openGroupManagement(context),
+                        icon: const Icon(Icons.group),
+                        label: const Text('Group Management'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    
+                    // My Group Button (User only - if they have a group)
+                    if (profileData.user.role != 1 && profileData.user.adminGroupId != null) ...[
+                      OutlinedButton.icon(
+                        onPressed: () => _openMyGroup(context),
+                        icon: const Icon(Icons.group),
+                        label: const Text('My Group'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    
+                    // Join Group Button (User only - if they don't have a group)
+                    if (profileData.user.role != 1 && profileData.user.adminGroupId == null) ...[
+                      _buildNoGroupWarning(context),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => _openJoinGroup(context),
+                        icon: const Icon(Icons.group_add),
+                        label: Text(
+                          AppLocalizations.of(context).translate('admin_group.join_group') ?? 'Join a Group',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    
+                    // Admin-only buttons
+                    if (profileData.user.role == 1) ...[
+                      // Group Management Button (Admin only)
+                      OutlinedButton.icon(
+                        onPressed: () => _openGroupManagement(context),
+                        icon: const Icon(Icons.group),
+                        label: const Text('Group Management'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Join SuperAdmin Group Button (Admin only - if not already in a SuperAdmin group)
+                      // Only show if admin flavor is enabled and user is not already in a SuperAdmin group
+                      if (FlavorConfig.instance.isAdmin && profileData.user.superAdminGroupId == null) ...[
+                        OutlinedButton.icon(
+                          onPressed: () => _openJoinSuperAdminGroup(context),
+                          icon: const Icon(Icons.supervisor_account),
+                          label: const Text('Join SuperAdmin Group'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      
+                      // Database Management Button (Admin only)
                       OutlinedButton.icon(
                         onPressed: () => _openDatabaseManagement(context),
                         icon: const Icon(Icons.storage),
@@ -180,7 +256,8 @@ class ProfileView extends StatelessWidget {
           }
 
           return const Center(child: CircularProgressIndicator());
-        },
+          },
+        ),
       ),
     );
   }
@@ -263,11 +340,35 @@ class ProfileView extends StatelessWidget {
     );
   }
 
+  void _openGroupManagement(BuildContext context) {
+    Navigator.pushNamed(context, '/group-management');
+  }
+
+  void _openMyGroup(BuildContext context) {
+    Navigator.pushNamed(context, '/group-info');
+  }
+
+  void _openJoinGroup(BuildContext context) {
+    Navigator.pushNamed(context, '/join-group');
+  }
+
   void _openDatabaseManagement(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => const DatabaseManagementPage(),
+      ),
+    );
+  }
+
+  void _openJoinSuperAdminGroup(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BlocProvider(
+          create: (context) => di.sl<AdminGroupBloc>(),
+          child: const JoinSuperAdminGroupPage(),
+        ),
       ),
     );
   }
@@ -296,6 +397,48 @@ class ProfileView extends StatelessWidget {
               foregroundColor: Colors.white,
             ),
             child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoGroupWarning(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.orange.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.info_outline,
+            color: Colors.orange,
+            size: 32,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.translate('admin_group.not_in_group') ?? 'You are not part of any group',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.translate('admin_group.not_in_group_desc') ?? 
+                'Join a group using a code provided by your admin to access shared financial data.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

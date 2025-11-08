@@ -1,6 +1,7 @@
 class TransferRecord {
   final int? id;
   final int userId;
+  final int? recipientUserId; // ID of the user who receives the transfer
   final String recipientName;
   final double amountUsd;
   final double? convertedAmountUsd; // amount converted to SYP
@@ -13,6 +14,7 @@ class TransferRecord {
   const TransferRecord({
     this.id,
     required this.userId,
+    this.recipientUserId,
     required this.recipientName,
     required this.amountUsd,
     this.convertedAmountUsd,
@@ -26,6 +28,7 @@ class TransferRecord {
   TransferRecord copyWith({
     int? id,
     int? userId,
+    int? recipientUserId,
     String? recipientName,
     double? amountUsd,
     double? convertedAmountUsd,
@@ -38,6 +41,7 @@ class TransferRecord {
     return TransferRecord(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      recipientUserId: recipientUserId ?? this.recipientUserId,
       recipientName: recipientName ?? this.recipientName,
       amountUsd: amountUsd ?? this.amountUsd,
       convertedAmountUsd: convertedAmountUsd ?? this.convertedAmountUsd,
@@ -68,6 +72,7 @@ class TransferRecord {
     return TransferRecord(
       id: map['id'] as int?,
       userId: (map['user_id'] as int?) ?? 0,
+      recipientUserId: map['recipient_user_id'] as int?,
       recipientName: (map['recipient_name'] as String?) ?? '',
       amountUsd: (map['amount_usd'] as num?)?.toDouble() ?? 0.0,
       convertedAmountUsd: (map['converted_amount_usd'] as num?)?.toDouble(),

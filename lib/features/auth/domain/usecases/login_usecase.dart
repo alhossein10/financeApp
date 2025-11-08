@@ -42,19 +42,8 @@ class LoginUseCase {
         await secureStorageService.clearStoredCredentials();
       }
       
-      // Try Supabase login (non-blocking)
-      try {
-        final supabaseService = SupabaseService();
-        final user = await supabaseService.signIn(params.email, params.password);
-        print('[Login] Supabase authentication successful');
-        final isAdmin = await supabaseService.isAdmin;
-        print('[Login] Supabase user role: ${isAdmin ? 'admin' : 'user'}');
-      } catch (e) {
-        // Supabase login failed, but local login succeeded
-        // Continue with local authentication only
-        print('[Login] Supabase login failed (non-critical): $e');
-        print('[Login] Continuing with local authentication only');
-      }
+      // Supabase integration removed for Laravel version
+      // Authentication is handled by Laravel backend
     }
     
     return result;

@@ -1,7 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../features/expenses/domain/entities/expense.dart';
 import '../error/failures.dart';
-import '../models/sync_status.dart';
 
 /// Abstract interface for synchronization operations
 /// Handles one-way sync from User version to Admin version via Supabase

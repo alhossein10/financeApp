@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/transfer.dart';
+import '../../domain/entities/transfer_type.dart';
 
 abstract class TransferEvent extends Equatable {
   const TransferEvent();
@@ -11,6 +12,8 @@ abstract class TransferEvent extends Equatable {
 class CreateTransferEvent extends TransferEvent {
   final int userId;
   final String recipientName;
+  final int? recipientUserId; // ID of the recipient user (required for SuperAdmin transfers to admins)
+  final int? adminGroupId; // Admin group ID for the transfer (should be set from recipient's admin_group_id for SuperAdmin transfers)
   final double amountUsd;
   final double? convertedAmountUsd;
   final double? amountSypAtExchange;
@@ -20,6 +23,8 @@ class CreateTransferEvent extends TransferEvent {
   const CreateTransferEvent({
     required this.userId,
     required this.recipientName,
+    this.recipientUserId,
+    this.adminGroupId,
     required this.amountUsd,
     this.convertedAmountUsd,
     this.amountSypAtExchange,
@@ -31,6 +36,8 @@ class CreateTransferEvent extends TransferEvent {
   List<Object?> get props => [
         userId,
         recipientName,
+        recipientUserId,
+        adminGroupId,
         amountUsd,
         convertedAmountUsd,
         amountSypAtExchange,
@@ -41,11 +48,12 @@ class CreateTransferEvent extends TransferEvent {
 
 class LoadTransfersEvent extends TransferEvent {
   final int userId;
+  final TransferType type;
 
-  const LoadTransfersEvent(this.userId);
+  const LoadTransfersEvent(this.userId, {this.type = TransferType.all});
 
   @override
-  List<Object?> get props => [userId];
+  List<Object?> get props => [userId, type];
 }
 
 class UpdateTransferEvent extends TransferEvent {

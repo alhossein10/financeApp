@@ -1,4 +1,8 @@
 import '../../domain/entities/user.dart';
+import '../../domain/entities/organization.dart';
+import '../../domain/entities/department.dart';
+import 'organization_model.dart';
+import 'department_model.dart';
 
 /// User model for data layer, extends User entity
 /// Handles serialization/deserialization to/from database
@@ -12,6 +16,14 @@ class UserModel extends User {
     super.updatedAt,
     super.profilePicturePath,
     super.lastLogin,
+    super.organizationName,
+    super.departmentName,
+    super.adminGroupId,
+    super.superAdminGroupId,
+    required super.organizationId,
+    super.departmentId,
+    super.organization,
+    super.department,
   });
 
   /// Create UserModel from database map
@@ -29,6 +41,18 @@ class UserModel extends User {
       lastLogin: map['last_login'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['last_login'] as int)
           : null,
+      organizationName: map['organization_name'] as String?,
+      departmentName: map['department_name'] as String?,
+      adminGroupId: map['admin_group_id'] as int?,
+      superAdminGroupId: map['super_admin_group_id'] as int?,
+      organizationId: map['organization_id'] as int,
+      departmentId: map['department_id'] as int?,
+      organization: map['organization'] != null
+          ? OrganizationModel.fromJson(map['organization'] as Map<String, dynamic>)
+          : null,
+      department: map['department'] != null
+          ? DepartmentModel.fromJson(map['department'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -43,6 +67,12 @@ class UserModel extends User {
       'updated_at': updatedAt?.millisecondsSinceEpoch,
       'profile_picture_path': profilePicturePath,
       'last_login': lastLogin?.millisecondsSinceEpoch,
+      'organization_name': organizationName,
+      'department_name': departmentName,
+      'admin_group_id': adminGroupId,
+      'super_admin_group_id': superAdminGroupId,
+      'organization_id': organizationId,
+      'department_id': departmentId,
     };
   }
 
@@ -57,6 +87,14 @@ class UserModel extends User {
       updatedAt: user.updatedAt,
       profilePicturePath: user.profilePicturePath,
       lastLogin: user.lastLogin,
+      organizationName: user.organizationName,
+      departmentName: user.departmentName,
+      adminGroupId: user.adminGroupId,
+      superAdminGroupId: user.superAdminGroupId,
+      organizationId: user.organizationId,
+      departmentId: user.departmentId,
+      organization: user.organization,
+      department: user.department,
     );
   }
 
@@ -70,6 +108,14 @@ class UserModel extends User {
     DateTime? updatedAt,
     String? profilePicturePath,
     DateTime? lastLogin,
+    String? organizationName,
+    String? departmentName,
+    int? adminGroupId,
+    int? superAdminGroupId,
+    int? organizationId,
+    int? departmentId,
+    Organization? organization,
+    Department? department,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -80,6 +126,14 @@ class UserModel extends User {
       updatedAt: updatedAt ?? this.updatedAt,
       profilePicturePath: profilePicturePath ?? this.profilePicturePath,
       lastLogin: lastLogin ?? this.lastLogin,
+      organizationName: organizationName ?? this.organizationName,
+      departmentName: departmentName ?? this.departmentName,
+      adminGroupId: adminGroupId ?? this.adminGroupId,
+      superAdminGroupId: superAdminGroupId ?? this.superAdminGroupId,
+      organizationId: organizationId ?? this.organizationId,
+      departmentId: departmentId ?? this.departmentId,
+      organization: organization ?? this.organization,
+      department: department ?? this.department,
     );
   }
 }
