@@ -1,12 +1,16 @@
 import 'dart:async';
 import '../../../../core/api/api_client.dart';
+import '../../../../core/api/api_exception.dart';
 import '../../../../core/services/laravel_auth_service.dart';
+import '../../../../core/utils/secure_logger.dart';
 import '../../domain/entities/organization.dart';
 import '../../domain/entities/department.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/entities/registration_result.dart';
 import '../models/organization_model.dart';
 import '../models/department_model.dart';
+
+const String _logTag = 'AUTH_API';
 
 /// Abstract interface for authentication API data source
 abstract class AuthApiDataSource {
@@ -20,6 +24,7 @@ abstract class AuthApiDataSource {
     required String password,
     String? organizationName,
     String? departmentName,
+    String? adminGroupName, // SuperAdmin group name (for SuperAdmin registration)
     String? groupCode, // Admin group code (for users joining admin groups)
     String? superAdminGroupCode, // SuperAdmin group code (for admins joining SuperAdmin groups)
     String role = 'user',
@@ -86,6 +91,7 @@ class AuthApiDataSourceImpl implements AuthApiDataSource {
     required String password,
     String? organizationName,
     String? departmentName,
+    String? adminGroupName,
     String? groupCode,
     String? superAdminGroupCode,
     String role = 'user',
@@ -96,6 +102,7 @@ class AuthApiDataSourceImpl implements AuthApiDataSource {
       password: password,
       organizationName: organizationName,
       departmentName: departmentName,
+      adminGroupName: adminGroupName,
       groupCode: groupCode,
       superAdminGroupCode: superAdminGroupCode,
       role: role,
@@ -159,121 +166,120 @@ class AuthApiDataSourceImpl implements AuthApiDataSource {
   @override
   Future<List<Organization>> getOrganizations() async {
     try {
-      print('🔵 [AUTH_API] Fetching organizations...');
-      
+      SecureLogger.request(_logTag, 'GET', '/organizations');
+
       final response = await _apiClient.get('/organizations').timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          print('⏱️ [AUTH_API] Request timed out after 10 seconds');
           throw TimeoutException('Organizations request timed out');
         },
       );
 
-      print('🔵 [AUTH_API] Response received!');
-      print('🔵 [AUTH_API] Response status: ${response.statusCode}');
-      print('🔵 [AUTH_API] Response data: ${response.data}');
+      SecureLogger.response(_logTag, response.statusCode);
 
       // Check if response is successful
       if (response.statusCode != 200) {
-        print('❌ [AUTH_API] Non-200 status code: ${response.statusCode}');
-        throw Exception('Failed to load organizations: ${response.statusCode}');
+        throw ApiException(
+          statusCode: response.statusCode ?? 0,
+          message: 'Failed to load organizations',
+        );
       }
 
       // Parse response data
       final data = response.data;
-      print('🔵 [AUTH_API] Data type: ${data.runtimeType}');
-      
+
       if (data is! Map<String, dynamic>) {
-        print('❌ [AUTH_API] Invalid response format - expected Map, got ${data.runtimeType}');
-        throw Exception('Invalid response format');
+        throw ApiException(
+          statusCode: 0,
+          message: 'Invalid response format',
+        );
       }
 
       // Extract organizations list from response
       if (!data.containsKey('data')) {
-        print('❌ [AUTH_API] Response missing "data" key. Keys: ${data.keys}');
-        throw Exception('Response missing data key');
+        throw ApiException(
+          statusCode: 0,
+          message: 'Response missing data key',
+        );
       }
-      
+
       final organizationsList = data['data'] as List<dynamic>;
-      
-      print('✅ [AUTH_API] Successfully loaded ${organizationsList.length} organizations');
-      
+
+      SecureLogger.success(_logTag, 'Loaded ${organizationsList.length} organizations');
+
       return organizationsList
           .map((json) => OrganizationModel.fromJson(json as Map<String, dynamic>))
           .toList();
-    } catch (e, stackTrace) {
-      // If API endpoint fails, return default organization as fallback
-      print('⚠️ [AUTH_API] Organizations endpoint error: $e');
-      print('⚠️ [AUTH_API] Error type: ${e.runtimeType}');
-      print('⚠️ [AUTH_API] Stack trace: $stackTrace');
-      print('⚠️ [AUTH_API] Returning default organization as fallback');
-      return [
-        const Organization(
-          id: 1,
-          name: 'Default Organization',
-        ),
-      ];
+    } on TimeoutException {
+      SecureLogger.error(_logTag, 'Organizations request timed out');
+      // Return empty list on timeout - let UI handle empty state
+      return [];
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      SecureLogger.error(_logTag, 'Failed to load organizations', e);
+      // Return empty list on error - do NOT return fake data
+      return [];
     }
   }
 
   @override
   Future<List<Department>> getDepartments(int organizationId) async {
     try {
-      print('🔵 [AUTH_API] Fetching departments for organization $organizationId...');
-      
+      SecureLogger.request(_logTag, 'GET', '/organizations/$organizationId/departments');
+
       final response = await _apiClient.get('/organizations/$organizationId/departments').timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          print('⏱️ [AUTH_API] Request timed out after 10 seconds');
           throw TimeoutException('Departments request timed out');
         },
       );
 
-      print('🔵 [AUTH_API] Response received!');
-      print('🔵 [AUTH_API] Response status: ${response.statusCode}');
-      print('🔵 [AUTH_API] Response data: ${response.data}');
+      SecureLogger.response(_logTag, response.statusCode);
 
       // Check if response is successful
       if (response.statusCode != 200) {
-        print('❌ [AUTH_API] Non-200 status code: ${response.statusCode}');
-        throw Exception('Failed to load departments: ${response.statusCode}');
+        throw ApiException(
+          statusCode: response.statusCode ?? 0,
+          message: 'Failed to load departments',
+        );
       }
 
       // Parse response data
       final data = response.data;
-      print('🔵 [AUTH_API] Data type: ${data.runtimeType}');
-      
+
       if (data is! Map<String, dynamic>) {
-        print('❌ [AUTH_API] Invalid response format - expected Map, got ${data.runtimeType}');
-        throw Exception('Invalid response format');
+        throw ApiException(
+          statusCode: 0,
+          message: 'Invalid response format',
+        );
       }
 
       // Extract departments list from response
       if (!data.containsKey('data')) {
-        print('❌ [AUTH_API] Response missing "data" key. Keys: ${data.keys}');
-        throw Exception('Response missing data key');
+        throw ApiException(
+          statusCode: 0,
+          message: 'Response missing data key',
+        );
       }
-      
+
       final departmentsList = data['data'] as List<dynamic>;
-      
-      print('✅ [AUTH_API] Successfully loaded ${departmentsList.length} departments');
-      
+
+      SecureLogger.success(_logTag, 'Loaded ${departmentsList.length} departments');
+
       return departmentsList
           .map((json) => DepartmentModel.fromJson(json as Map<String, dynamic>))
           .toList();
-    } catch (e, stackTrace) {
-      // If API endpoint fails, return default department as fallback
-      print('⚠️ [AUTH_API] Departments endpoint error: $e');
-      print('⚠️ [AUTH_API] Error type: ${e.runtimeType}');
-      print('⚠️ [AUTH_API] Stack trace: $stackTrace');
-      print('⚠️ [AUTH_API] Returning default department as fallback');
-      return [
-        Department(
-          id: 1,
-          name: 'Default Department',
-          organizationId: organizationId,
-        ),
-      ];
+    } on TimeoutException {
+      SecureLogger.error(_logTag, 'Departments request timed out');
+      // Return empty list on timeout - let UI handle empty state
+      return [];
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      SecureLogger.error(_logTag, 'Failed to load departments', e);
+      // Return empty list on error - do NOT return fake data
+      return [];
     }
   }
 }

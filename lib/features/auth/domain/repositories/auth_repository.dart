@@ -22,6 +22,7 @@ abstract class AuthRepository {
     String password, {
     String? organizationName,
     String? departmentName,
+    String? adminGroupName, // SuperAdmin group name (for SuperAdmin registration)
     String? groupCode, // Admin group code (for users joining admin groups)
     String? superAdminGroupCode, // SuperAdmin group code (for admins joining SuperAdmin groups)
     String role = 'user',

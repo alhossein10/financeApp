@@ -6,7 +6,7 @@ import '../../../../injection_container.dart';
 
 /// Page for migrating data from SQLite to Laravel backend
 class MigrationPage extends StatefulWidget {
-  const MigrationPage({Key? key}) : super(key: key);
+  const MigrationPage({super.key});
 
   @override
   State<MigrationPage> createState() => _MigrationPageState();

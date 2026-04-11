@@ -77,9 +77,14 @@ dependencies:
   uuid: ^4.2.1
   shared_preferences: ^2.2.2
   
+  # Image Caching
+  cached_network_image: ^3.3.1
+  flutter_cache_manager: ^3.3.1
+  
   # Connectivity
   connectivity_plus: ^6.0.5
   flutter_native_splash: ^2.4.4
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:
@@ -96,6 +101,11 @@ dev_dependencies:
   mocktail: ^1.0.0
   build_runner: ^2.4.6
   http_mock_adapter: ^0.6.1
+
+flutter_launcher_icons:
+  image_path: "assets/images/Picture5.png"
+  android: true
+  ios: true
 
 flutter_native_splash:
   android: true
@@ -116,6 +126,7 @@ flutter_native_splash:
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

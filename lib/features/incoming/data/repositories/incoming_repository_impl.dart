@@ -1,6 +1,5 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/api/api_exception.dart';
-import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/models/queue_item.dart';
 import '../../../../core/services/connectivity_monitor.dart';
@@ -11,7 +10,6 @@ import '../datasources/incoming_api_datasource.dart';
 import '../datasources/incoming_cache_datasource.dart';
 import '../datasources/incoming_local_datasource.dart';
 import '../models/incoming_dto.dart';
-import '../models/incoming_model.dart';
 
 class IncomingRepositoryImpl implements IncomingRepository {
   final IncomingLocalDataSource localDataSource;
@@ -63,7 +61,7 @@ class IncomingRepositoryImpl implements IncomingRepository {
           await cacheDataSource.clearCache(); // Clear list caches
           
           return Right(incoming);
-        } on ApiException catch (e) {
+        } on ApiException {
           // Queue for later sync if API fails
           final tempIncoming = dto.toEntity();
           await _queueIncomingOperation(tempIncoming, QueueOperation.create);
@@ -105,7 +103,7 @@ class IncomingRepositoryImpl implements IncomingRepository {
           
           final incomingList = response.data.map((dto) => dto.toEntity()).toList();
           return Right(incomingList);
-        } on ApiException catch (e) {
+        } on ApiException {
           // Return empty list if API fails and no cache
           return const Right([]);
         }
@@ -137,7 +135,7 @@ class IncomingRepositoryImpl implements IncomingRepository {
           await cacheDataSource.clearCache(); // Clear list caches too
           
           return const Right(null);
-        } on ApiException catch (e) {
+        } on ApiException {
           // Queue for later sync if API fails
           await _queueIncomingOperation(incoming, QueueOperation.update);
           return const Right(null);
@@ -170,7 +168,7 @@ class IncomingRepositoryImpl implements IncomingRepository {
           await cacheDataSource.clearCache(); // Clear list caches too
           
           return const Right(null);
-        } on ApiException catch (e) {
+        } on ApiException {
           // Queue for later sync if API fails
           final queueItem = QueueItem(
             id: '',

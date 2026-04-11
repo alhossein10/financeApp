@@ -69,3 +69,17 @@ class CancelExportEvent extends ExportEvent {
 class RetryExportEvent extends ExportEvent {
   const RetryExportEvent();
 }
+
+/// Event to request invoice images export
+class RequestInvoiceImagesExportEvent extends ExportEvent {
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  const RequestInvoiceImagesExportEvent({
+    this.startDate,
+    this.endDate,
+  });
+
+  @override
+  List<Object?> get props => [startDate, endDate];
+}

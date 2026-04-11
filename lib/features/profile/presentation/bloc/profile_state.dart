@@ -79,3 +79,27 @@ class ProfilePasswordChangeSuccess extends ProfileState {
 class ProfileAccountDeleted extends ProfileState {
   const ProfileAccountDeleted();
 }
+
+/// Profile photo upload successful
+class ProfilePhotoUploadSuccess extends ProfileState {
+  final UserProfileData profileData;
+  final String photoUrl;
+
+  const ProfilePhotoUploadSuccess({
+    required this.profileData,
+    required this.photoUrl,
+  });
+
+  @override
+  List<Object?> get props => [profileData, photoUrl];
+}
+
+/// Profile photo delete successful
+class ProfilePhotoDeleteSuccess extends ProfileState {
+  final UserProfileData profileData;
+
+  const ProfilePhotoDeleteSuccess({required this.profileData});
+
+  @override
+  List<Object?> get props => [profileData];
+}

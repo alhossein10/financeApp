@@ -57,3 +57,20 @@ class ProfilePasswordChangeRequested extends ProfileEvent {
 class ProfileDeleteAccountRequested extends ProfileEvent {
   const ProfileDeleteAccountRequested();
 }
+
+/// Event to upload profile photo
+class ProfilePhotoUploadRequested extends ProfileEvent {
+  final String filePath;
+
+  const ProfilePhotoUploadRequested({
+    required this.filePath,
+  });
+
+  @override
+  List<Object?> get props => [filePath];
+}
+
+/// Event to delete profile photo
+class ProfilePhotoDeleteRequested extends ProfileEvent {
+  const ProfilePhotoDeleteRequested();
+}

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/file_upload_dto.dart';
 import '../services/file_upload_service.dart';
@@ -11,12 +10,12 @@ class FileManagerWidget extends StatefulWidget {
   final Function(String)? onError;
 
   const FileManagerWidget({
-    Key? key,
+    super.key,
     required this.files,
     required this.fileUploadService,
     this.onFileDeleted,
     this.onError,
-  }) : super(key: key);
+  });
 
   @override
   State<FileManagerWidget> createState() => _FileManagerWidgetState();

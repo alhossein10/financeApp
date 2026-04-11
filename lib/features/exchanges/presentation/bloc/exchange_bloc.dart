@@ -36,6 +36,7 @@ class ExchangeBloc extends Bloc<ExchangeEvent, ExchangeState> {
       targetCurrency: event.targetCurrency,
       amountUsd: event.amountUsd,
       exchangeRate: event.exchangeRate,
+      convertedAmount: event.convertedAmount,
       exchangeDate: event.exchangeDate,
       notes: event.notes,
     );

@@ -13,6 +13,7 @@ abstract class TransferApiDataSource {
     int perPage = 15,
     DateTime? startDate,
     DateTime? endDate,
+    int? recipientUserId,
   });
 
   /// Get a single transfer by ID
@@ -47,6 +48,7 @@ class TransferApiDataSourceImpl implements TransferApiDataSource {
     int perPage = 15,
     DateTime? startDate,
     DateTime? endDate,
+    int? recipientUserId,
   }) async {
     try {
       final queryParams = <String, dynamic>{
@@ -60,6 +62,10 @@ class TransferApiDataSourceImpl implements TransferApiDataSource {
 
       if (endDate != null) {
         queryParams['date_to'] = DateFormatter.toApiDate(endDate);
+      }
+
+      if (recipientUserId != null) {
+        queryParams['recipient_user_id'] = recipientUserId;
       }
 
       print('[TransferApiDataSource] 📡 Requesting transfers from API');

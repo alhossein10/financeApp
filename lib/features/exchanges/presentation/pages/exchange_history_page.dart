@@ -10,6 +10,8 @@ import '../bloc/exchange_state.dart';
 import '../../../admin_group/presentation/bloc/admin_group_bloc.dart';
 import '../../../admin_group/presentation/bloc/admin_group_event.dart';
 import '../../../admin_group/presentation/bloc/admin_group_state.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../../state/filters.dart';
 import '../../../../utils/pdf_export_helper.dart';
 import '../../../../core/widgets/watermark_background.dart';
@@ -50,7 +52,7 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
     }
   }
   
-  List<Exchange> _getFilteredExchanges(List<Exchange> exchanges) {
+  List<Exchange> _getFilteredExchanges(List<Exchange> exchanges, int? currentAdminUserId) {
     var filtered = exchanges;
     
     // Filter by user (userName) - only for admin flavor
@@ -58,7 +60,13 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
     if (FlavorConfig.instance.isAdmin) {
       final selectedUser = RecipientFilterNotifier.instance.value;
       if (selectedUser != null) {
-        filtered = filtered.where((e) => e.userName == selectedUser).toList();
+        // If selectedUser is "ADMIN_OWNER", filter by current admin user ID
+        if (selectedUser == 'ADMIN_OWNER' && currentAdminUserId != null) {
+          filtered = filtered.where((e) => e.userId == currentAdminUserId).toList();
+        } else {
+          // Filter by userName
+          filtered = filtered.where((e) => e.userName == selectedUser).toList();
+        }
       }
     }
     
@@ -90,7 +98,7 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
     
     if (exchangeState is! ExchangesLoaded) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.translate('no_data_available') ?? 'No data available')),
+        SnackBar(content: Text(l10n?.noDataAvailable ?? 'No data available')),
       );
       return;
     }
@@ -99,19 +107,37 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
     
     try {
       final allExchanges = exchangeState.exchanges;
-      final filteredExchanges = _getFilteredExchanges(allExchanges);
+      
+      // Get current admin user ID for filtering
+      int? currentAdminUserId;
+      if (FlavorConfig.instance.isAdmin) {
+        final authState = context.read<AuthBloc>().state;
+        if (authState is AuthAuthenticated && authState.user != null) {
+          currentAdminUserId = authState.user!.id;
+        }
+      }
+      
+      final filteredExchanges = _getFilteredExchanges(allExchanges, currentAdminUserId);
       
       if (filteredExchanges.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.translate('no_exchanges_yet') ?? 'No exchanges to export')),
+            SnackBar(content: Text(l10n?.noExchangesYet ?? 'No exchanges to export')),
           );
         }
         return;
       }
 
       // Get the selected recipient name if filter is applied
-      final selectedRecipient = RecipientFilterNotifier.instance.value;
+      String? selectedRecipient = RecipientFilterNotifier.instance.value;
+      
+      // If "ADMIN_OWNER" is selected, get the actual admin user name
+      if (selectedRecipient == 'ADMIN_OWNER') {
+        final authState = context.read<AuthBloc>().state;
+        if (authState is AuthAuthenticated && authState.user != null) {
+          selectedRecipient = authState.user!.username;
+        }
+      }
       
       // Export using PdfExportHelper
       await PdfExportHelper.exportExchanges(
@@ -131,7 +157,7 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${l10n.translate('export_error') ?? 'Export error'}: ${e.toString()}'),
+            content: Text('${l10n?.error ?? 'Export error'}: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -150,7 +176,7 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.translate('exchange_history') ?? 'Exchange History'),
+        title: Text(l10n?.exchangeHistory ?? 'Exchange History'),
         actions: [
           IconButton(
             icon: _isExporting
@@ -161,7 +187,7 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
                   )
                 : const Icon(Icons.picture_as_pdf),
             onPressed: _isExporting ? null : _exportExchanges,
-            tooltip: l10n.translate('export_exchanges') ?? 'Export Exchanges',
+            tooltip: l10n?.exportExchanges ?? 'Export Exchanges',
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -177,7 +203,16 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
         listener: (context, adminGroupState) {
           if (adminGroupState is GroupMembersLoaded) {
             setState(() {
+              // Get current admin user to identify admin owner
+              final authState = context.read<AuthBloc>().state;
+              int? currentAdminUserId;
+              if (authState is AuthAuthenticated && authState.user != null) {
+                currentAdminUserId = authState.user!.id;
+              }
+              
+              // Get all member names except the admin owner (admin owner will be filtered separately)
               _groupMemberNames = adminGroupState.members
+                  .where((m) => m.id != currentAdminUserId) // Exclude admin owner from regular list
                   .map((m) => m.name)
                   .toList()
                 ..sort();
@@ -195,11 +230,11 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('${l10n.translate('error') ?? 'Error'}: ${exchangeState.message}'),
+                  Text('${l10n?.error ?? 'Error'}: ${exchangeState.message}'),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _loadExchanges,
-                    child: Text(l10n.translate('retry') ?? 'Retry'),
+                    child: Text(l10n?.retry ?? 'Retry'),
                   ),
                 ],
               ),
@@ -213,7 +248,16 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
             return ValueListenableBuilder<String?>(
               valueListenable: RecipientFilterNotifier.instance,
               builder: (context, selectedUser, _) {
-                final filteredExchanges = _getFilteredExchanges(allExchanges);
+                // Get current admin user ID for filtering
+                int? currentAdminUserId;
+                if (isAdmin) {
+                  final authState = context.read<AuthBloc>().state;
+                  if (authState is AuthAuthenticated && authState.user != null) {
+                    currentAdminUserId = authState.user!.id;
+                  }
+                }
+                
+                final filteredExchanges = _getFilteredExchanges(allExchanges, currentAdminUserId);
                 final sypSum = _calculateSypSum(filteredExchanges);
                 final trySum = _calculateTrySum(filteredExchanges);
                 
@@ -229,7 +273,7 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
                             child: DropdownButtonFormField<String?>(
                               initialValue: _selectedCurrency,
                               decoration: InputDecoration(
-                                labelText: l10n.translate('filter_by_currency') ?? 'Filter by Currency',
+                                labelText: l10n?.filterByCurrency ?? 'Filter by Currency',
                                 border: const OutlineInputBorder(),
                                 prefixIcon: const Icon(Icons.currency_exchange),
                                 isDense: true,
@@ -264,7 +308,7 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
                               child: DropdownButtonFormField<String?>(
                                 initialValue: RecipientFilterNotifier.instance.value,
                                 decoration: InputDecoration(
-                                  labelText: l10n.translate('filter_by_recipient') ?? 'Filter by User',
+                                  labelText: l10n?.filterByRecipient ?? 'Filter by User',
                                   border: const OutlineInputBorder(),
                                   prefixIcon: const Icon(Icons.person),
                                   isDense: true,
@@ -275,9 +319,19 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
                                   DropdownMenuItem<String?>(
                                     value: null,
                                     child: Text(
-                                      l10n.translate('all_users') ?? 'All',
+                                      l10n?.allUsers ?? 'All',
                                       overflow: TextOverflow.ellipsis,
                                       maxLines: 1,
+                                    ),
+                                  ),
+                                  // Add "Admin Owner" option to filter admin's exchanges only
+                                  DropdownMenuItem<String?>(
+                                    value: 'ADMIN_OWNER',
+                                    child: Text(
+                                      'Admin Owner',
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                   ..._groupMemberNames.map((name) {
@@ -294,9 +348,15 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
                                 selectedItemBuilder: (BuildContext context) {
                                   return [
                                     Text(
-                                      l10n.translate('all_users') ?? 'All',
+                                      l10n?.allUsers ?? 'All',
                                       overflow: TextOverflow.ellipsis,
                                       maxLines: 1,
+                                    ),
+                                    Text(
+                                      'Admin Owner',
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                     ..._groupMemberNames.map((name) {
                                       return Text(
@@ -329,7 +389,7 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                l10n.translate('total_syp') ?? 'Total SYP',
+                                l10n?.totalSyp ?? 'Total SYP',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -370,7 +430,7 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
                         ),
                       ] else if (_selectedCurrency == 'SYP') ...[
                         Text(
-                          l10n.translate('total_syp') ?? 'Total SYP',
+                          l10n?.totalSyp ?? 'Total SYP',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -407,129 +467,142 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
                 
                 // Exchange list
                 Expanded(
-                  child: filteredExchanges.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      _loadExchanges();
+                      _loadGroupMembers();
+                    },
+                    child: filteredExchanges.isEmpty
+                        ? ListView(
                             children: [
-                              Icon(
-                                Icons.currency_exchange_outlined,
-                                size: 64,
-                                color: Colors.grey.shade400,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                l10n.translate('no_exchanges_yet') ?? 'No exchanges yet',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade600,
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.5,
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.currency_exchange_outlined,
+                                        size: 64,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        l10n?.noExchangesYet ?? 'No exchanges yet',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        l10n?.createFirstExchange ?? 'Create your first exchange from a transfer',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade500,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                l10n.translate('create_first_exchange') ?? 'Create your first exchange from a transfer',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey.shade500,
-                                ),
-                                textAlign: TextAlign.center,
                               ),
                             ],
+                          )
+                        : ListView.builder(
+                            itemCount: filteredExchanges.length,
+                            padding: const EdgeInsets.all(8),
+                            itemBuilder: (context, index) {
+                              final exchange = filteredExchanges[index];
+                              return Card(
+                                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                elevation: 2,
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.green,
+                                    child: const Icon(Icons.currency_exchange, color: Colors.white),
+                                  ),
+                                  title: Text(
+                                    _getExchangeTitle(exchange),
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.trending_up, size: 16, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              '${l10n?.rate ?? 'Rate'}: 1 USD = ${NumberFormat('#,###.##').format(exchange.exchangeRate)} ${exchange.targetCurrency ?? 'SYP'}',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              '${l10n?.date ?? 'Date'}: ${DateFormat('yyyy-MM-dd').format(exchange.exchangeDate)}',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (isAdmin && exchange.userName != null)
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.account_circle, size: 16, color: Colors.grey),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                '${l10n?.user ?? 'User'}: ${exchange.userName}',
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      if (exchange.recipientName != null)
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.person, size: 16, color: Colors.grey),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                '${l10n?.recipient ?? 'Recipient'}: ${exchange.recipientName}',
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      if (exchange.notes != null && exchange.notes!.isNotEmpty)
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.note, size: 16, color: Colors.grey),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                'Notes: ${exchange.notes}',
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                    ],
+                                  ),
+                                  isThreeLine: true,
+                                ),
+                              );
+                            },
                           ),
-                        )
-                      : ListView.builder(
-                          itemCount: filteredExchanges.length,
-                          padding: const EdgeInsets.all(8),
-                          itemBuilder: (context, index) {
-                            final exchange = filteredExchanges[index];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              elevation: 2,
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.green,
-                                  child: const Icon(Icons.currency_exchange, color: Colors.white),
-                                ),
-                                title: Text(
-                                  _getExchangeTitle(exchange),
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.trending_up, size: 16, color: Colors.grey),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            '${l10n.translate('rate') ?? 'Rate'}: 1 USD = ${NumberFormat('#,###.##').format(exchange.exchangeRate)} ${exchange.targetCurrency ?? 'SYP'}',
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            '${l10n.translate('date') ?? 'Date'}: ${DateFormat('yyyy-MM-dd').format(exchange.exchangeDate)}',
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (isAdmin && exchange.userName != null)
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.account_circle, size: 16, color: Colors.grey),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              '${l10n.translate('user') ?? 'User'}: ${exchange.userName}',
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    if (exchange.recipientName != null)
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.person, size: 16, color: Colors.grey),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              '${l10n.translate('recipient') ?? 'Recipient'}: ${exchange.recipientName}',
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    if (exchange.notes != null && exchange.notes!.isNotEmpty)
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.note, size: 16, color: Colors.grey),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              'Notes: ${exchange.notes}',
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                                isThreeLine: true,
-                              ),
-                            );
-                          },
-                        ),
+                  ),
                 ),
               ],
             );
@@ -538,7 +611,7 @@ class _ExchangeHistoryPageState extends State<ExchangeHistoryPage> {
           }
 
           return Center(
-            child: Text(l10n.translate('no_data_available') ?? 'No data available'),
+            child: Text(l10n?.noDataAvailable ?? 'No data available'),
           );
         },
       ),

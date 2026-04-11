@@ -1,7 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/utils/validators.dart';
-import '../entities/user.dart';
 import '../entities/registration_result.dart';
 import '../repositories/auth_repository.dart';
 
@@ -68,6 +67,7 @@ class RegisterUseCase {
       params.password,
       organizationName: params.organizationName,
       departmentName: params.departmentName,
+      adminGroupName: params.adminGroupName,
       groupCode: params.groupCode,
       superAdminGroupCode: params.superAdminGroupCode,
       role: params.role,
@@ -83,6 +83,7 @@ class RegisterParams {
   final String confirmPassword;
   final String? organizationName;
   final String? departmentName;
+  final String? adminGroupName; // SuperAdmin group name (for SuperAdmin registration)
   final String? groupCode; // Admin group code (for users joining admin groups)
   final String? superAdminGroupCode; // SuperAdmin group code (for admins joining SuperAdmin groups)
   final String role;
@@ -94,6 +95,7 @@ class RegisterParams {
     required this.confirmPassword,
     this.organizationName,
     this.departmentName,
+    this.adminGroupName,
     this.groupCode,
     this.superAdminGroupCode,
     this.role = 'user',

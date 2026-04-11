@@ -3,14 +3,10 @@ import '../../domain/entities/department.dart';
 /// Data model for Department with JSON serialization
 class DepartmentModel extends Department {
   const DepartmentModel({
-    required int id,
-    required int organizationId,
-    required String name,
-  }) : super(
-          id: id,
-          organizationId: organizationId,
-          name: name,
-        );
+    required super.id,
+    required super.organizationId,
+    required super.name,
+  });
 
   /// Creates a DepartmentModel from JSON
   factory DepartmentModel.fromJson(Map<String, dynamic> json) {

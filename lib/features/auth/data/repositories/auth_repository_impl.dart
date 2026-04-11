@@ -59,6 +59,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String password, {
     String? organizationName,
     String? departmentName,
+    String? adminGroupName,
     String? groupCode,
     String? superAdminGroupCode,
     String role = 'user',
@@ -71,6 +72,7 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
         organizationName: organizationName,
         departmentName: departmentName,
+        adminGroupName: adminGroupName,
         groupCode: groupCode,
         superAdminGroupCode: superAdminGroupCode,
         role: role,

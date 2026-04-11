@@ -83,7 +83,7 @@ class OptimisticUpdateHelper<T> {
       // Rollback on error
       final currentIndex = _items.indexOf(newItem);
       if (currentIndex != -1 && _rollbackData.containsKey(itemId)) {
-        _items[currentIndex] = _rollbackData[itemId]!;
+        _items[currentIndex] = _rollbackData[itemId] as T;
       }
       _pendingUpdates.remove(itemId);
       _rollbackData.remove(itemId);
@@ -94,7 +94,7 @@ class OptimisticUpdateHelper<T> {
     return () async {
       final currentIndex = _items.indexOf(newItem);
       if (currentIndex != -1 && _rollbackData.containsKey(itemId)) {
-        _items[currentIndex] = _rollbackData[itemId]!;
+        _items[currentIndex] = _rollbackData[itemId] as T;
       }
       _pendingUpdates.remove(itemId);
       _rollbackData.remove(itemId);
@@ -128,9 +128,9 @@ class OptimisticUpdateHelper<T> {
       // Rollback on error - restore item at original position
       if (_rollbackData.containsKey(itemId)) {
         if (index >= 0 && index <= _items.length) {
-          _items.insert(index, _rollbackData[itemId]!);
+          _items.insert(index, _rollbackData[itemId] as T);
         } else {
-          _items.add(_rollbackData[itemId]!);
+          _items.add(_rollbackData[itemId] as T);
         }
       }
       _pendingUpdates.remove(itemId);
@@ -142,9 +142,9 @@ class OptimisticUpdateHelper<T> {
     return () async {
       if (_rollbackData.containsKey(itemId)) {
         if (index >= 0 && index <= _items.length) {
-          _items.insert(index, _rollbackData[itemId]!);
+          _items.insert(index, _rollbackData[itemId] as T);
         } else {
-          _items.add(_rollbackData[itemId]!);
+          _items.add(_rollbackData[itemId] as T);
         }
       }
       _pendingUpdates.remove(itemId);

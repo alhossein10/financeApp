@@ -29,6 +29,7 @@ class AuthRegisterRequested extends AuthEvent {
   final String confirmPassword;
   final String? organizationName;
   final String? departmentName;
+  final String? adminGroupName; // SuperAdmin group name (for SuperAdmin registration)
   final String? groupCode; // Admin group code (for users joining admin groups)
   final String? superAdminGroupCode; // SuperAdmin group code (for admins joining SuperAdmin groups)
   final String role;
@@ -40,13 +41,14 @@ class AuthRegisterRequested extends AuthEvent {
     required this.confirmPassword,
     this.organizationName,
     this.departmentName,
+    this.adminGroupName,
     this.groupCode,
     this.superAdminGroupCode,
     this.role = 'user',
   });
 
   @override
-  List<Object?> get props => [username, email, password, confirmPassword, organizationName, departmentName, groupCode, superAdminGroupCode, role];
+  List<Object?> get props => [username, email, password, confirmPassword, organizationName, departmentName, adminGroupName, groupCode, superAdminGroupCode, role];
 }
 
 class AuthLogoutRequested extends AuthEvent {

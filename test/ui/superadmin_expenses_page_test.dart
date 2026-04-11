@@ -174,9 +174,7 @@ void main() {
         String? selectedFilter; // null means "All Groups"
 
         // Act - Filter logic
-        final filteredGroups = selectedFilter == null
-            ? allGroups
-            : allGroups.where((g) => g.adminGroupId == selectedFilter).toList();
+        final filteredGroups = allGroups;
 
         // Assert
         expect(filteredGroups.length, equals(2));
@@ -210,9 +208,7 @@ void main() {
         String? selectedFilter = 'group-1';
 
         // Act - Filter logic
-        final filteredGroups = selectedFilter == null
-            ? allGroups
-            : allGroups.where((g) => g.adminGroupId == selectedFilter).toList();
+        final filteredGroups = allGroups.where((g) => g.adminGroupId == selectedFilter).toList();
 
         // Assert
         expect(filteredGroups.length, equals(1));
@@ -236,9 +232,7 @@ void main() {
         String? selectedFilter = 'non-existent-group';
 
         // Act - Filter logic
-        final filteredGroups = selectedFilter == null
-            ? allGroups
-            : allGroups.where((g) => g.adminGroupId == selectedFilter).toList();
+        final filteredGroups = allGroups.where((g) => g.adminGroupId == selectedFilter).toList();
 
         // Assert
         expect(filteredGroups.isEmpty, isTrue);

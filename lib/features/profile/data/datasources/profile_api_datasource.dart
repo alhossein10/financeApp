@@ -1,5 +1,10 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_exception.dart';
+import '../../../../core/config/api_config.dart';
+import '../../../../core/services/token_manager.dart';
 import '../../../auth/domain/entities/user.dart';
 import '../models/user_statistics_model.dart';
 import '../models/profile_dto.dart';
@@ -26,14 +31,27 @@ abstract class ProfileApiDataSource {
 
   /// Get user statistics from API
   Future<UserStatisticsModel> getUserStatistics();
+
+  /// Update profile image
+  Future<User> updateProfileImage(String imageUrl);
+
+  /// Upload profile photo
+  Future<Map<String, String>> uploadProfilePhoto(String filePath);
+
+  /// Delete profile photo
+  Future<void> deleteProfilePhoto();
 }
 
 /// Implementation of ProfileApiDataSource using Laravel backend
 class ProfileApiDataSourceImpl implements ProfileApiDataSource {
   final ApiClient _apiClient;
+  final TokenManager _tokenManager;
 
-  ProfileApiDataSourceImpl({required ApiClient apiClient})
-      : _apiClient = apiClient;
+  ProfileApiDataSourceImpl({
+    required ApiClient apiClient,
+    required TokenManager tokenManager,
+  })  : _apiClient = apiClient,
+        _tokenManager = tokenManager;
 
   @override
   Future<User> getProfile() async {
@@ -197,4 +215,135 @@ class ProfileApiDataSourceImpl implements ProfileApiDataSource {
       );
     }
   }
+
+  @override
+  Future<User> updateProfileImage(String imageUrl) async {
+    try {
+      final response = await _apiClient.put(
+        '/profile/image',
+        body: {'profile_image_url': imageUrl},
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'] as Map<String, dynamic>;
+        final profileDto = ProfileDto.fromJson(data);
+        return profileDto.toEntity();
+      } else if (response.statusCode == 422) {
+        // Validation error
+        final errors = response.data['errors'] as Map<String, dynamic>?;
+        final errorMessage = errors?.values.first.first ?? 'Validation failed';
+        throw ApiException(
+          statusCode: 422,
+          message: errorMessage,
+          errors: errors,
+        );
+      } else {
+        throw ApiException(
+          statusCode: response.statusCode ?? 500,
+          message: 'Failed to update profile image',
+        );
+      }
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException(
+        statusCode: 500,
+        message: 'Failed to update profile image: ${e.toString()}',
+      );
+    }
+  }
+
+  @override
+  Future<Map<String, String>> uploadProfilePhoto(String filePath) async {
+    try {
+      final token = await _tokenManager.getToken();
+      if (token == null) {
+        throw ApiException(
+          statusCode: 401,
+          message: 'No authentication token available',
+        );
+      }
+
+      final file = File(filePath);
+      if (!await file.exists()) {
+        throw ApiException(
+          statusCode: 400,
+          message: 'File does not exist',
+        );
+      }
+
+      // Get base URL from ApiConfig
+      final baseUrl = _apiClient.getAuthToken() != null 
+          ? ApiConfig.apiUrl 
+          : ApiConfig.apiUrl;
+      final uri = Uri.parse('$baseUrl/profile/photo');
+      final request = http.MultipartRequest('POST', uri);
+      
+      request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Accept'] = 'application/json';
+      
+      request.files.add(
+        await http.MultipartFile.fromPath('photo', filePath),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final photoData = data['data'] as Map<String, dynamic>;
+        
+        return {
+          'profile_photo_path': photoData['profile_photo_path'] as String,
+          'profile_photo_url': photoData['profile_photo_url'] as String,
+        };
+      } else if (response.statusCode == 422) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final errors = data['errors'] as Map<String, dynamic>?;
+        final errorMessage = errors?.values.first.first ?? 'Validation failed';
+        throw ApiException(
+          statusCode: 422,
+          message: errorMessage,
+          errors: errors,
+        );
+      } else {
+        throw ApiException(
+          statusCode: response.statusCode,
+          message: 'Failed to upload profile photo',
+        );
+      }
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException(
+        statusCode: 500,
+        message: 'Failed to upload profile photo: ${e.toString()}',
+      );
+    }
+  }
+
+  @override
+  Future<void> deleteProfilePhoto() async {
+    try {
+      final response = await _apiClient.delete('/profile/photo');
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw ApiException(
+          statusCode: response.statusCode ?? 500,
+          message: 'Failed to delete profile photo',
+        );
+      }
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException(
+        statusCode: 500,
+        message: 'Failed to delete profile photo: ${e.toString()}',
+      );
+    }
+  }
 }
+

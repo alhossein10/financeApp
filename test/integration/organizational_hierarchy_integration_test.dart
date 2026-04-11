@@ -9,10 +9,10 @@ eWidget);ة'), findsOnر المنظمxt('اختfind.tepect(   exlable
 tester.pu await ded
      ion to loa Transit  //  gets);
 
-  ), findsWidatorssIndiccularProgre.byType(Circt(find
+  ), findsWidatorssIndiccularProgre.byType(Function(find
       expeng loadiInitially  // p();
 
-    t tester.pum      await());
+    t tester.pum      await()) Circt;
 rTesndedgetUreateWiet(cWidgmpster.pu   await te);
 
       ,
@@ -21,11 +21,11 @@ rTesndedgetUreateWiet(cWidgmpster.pu   await te);
 tions: organizaorganizatio       
      s: false,tiondingOrganiza isLoa  (
             AuthState     ue),
-  ations: trOrganiz(isLoadingst AuthState   con      erable([
+  ations: trOrganiz(isLoadingst AuthState   con Function([
  omItfr Stream.(_) =>        swer(
 eam).thenAnthBloc.strckAun(() => mo
       whe,
-      );ue)ions: trnizatgOrgaadinisLouthState( const A      turn(
+      );ue) erableions: trnizatgOrgaadinisLouthState( const A      turn(
  e).thenRethBloc.statmockAu when(() =>          ];
 
  
@@ -61,10 +61,10 @@ rty depa [], // Emptonstrtments: c   depa
    tester) asyilable', (rtments avadepawn when no nt dropdortmedisable depa('should estWidgets
     t);
   }
-  Widgets);findsIndicator), arProgressulrcnd.byType(Cit(fi  expecea
+  Widgets);findsIndicator), arProgressulrcnd.byType(Function(fi  expecea
      ar dropdownnttmearshown in depcator is indiify loading  Ver     //
  r.pump();
-await teste      );
+await teste      ) Cit;
 tUnderTest()(createWidgepumpWidgetr.ait teste
       aw
       );
@@ -72,11 +72,10 @@ tUnderTest()(createWidgepumpWidgetr.ait teste
   true,
    partments:Deing    isLoad
         ns,atios: organizorganization          State(
-         Auth
-   e( Stream.valu=>   (_) r(
+         Auth Function( Stream.valu=>   (_) r(
      .thenAnsweeam)strhBloc.kAut> mocen(() = wh
      ,
-      );    )    ue,
+      );    ) e    ue,
 trs: tmentingDepar    isLoadns,
       tio: organizaanizations      orgte(
     AuthSta
@@ -88,10 +87,9 @@ trs: tmentingDepar    isLoadns,
       finalsync { a', (tester)adingloents are e departmwhilr ndicatooading ild show l('shoutestWidgets        });
 
 ets);
-indsWidgdicator), frProgressInype(Circuland.byTt(fiexpec    wn area
-  opdoanization drn orgis shown iicator loading indVerify     // 
-  ();
-er.pumpstawait te());
+indsWidgdicator), frProgressInype(Circuland.byTt Function(fiexpec    wn area
+  opdoanization drn orgis shown iicator loading Function() indVerify;
+er.pumpstawait te()) Function ;
       derTestWidgetUn(createpWidgett tester.pum      awai    );
 
 e)),
@@ -108,9 +106,9 @@ e)),
 dsOneWidgefinents'), artm load deped toailntaining('FtextCo(find.ctpe   ex   yed
  is displasagey error mes // Verif    );
 
- s: 100)nd(millisecoDuration(const ter.pumpes    await tpump();
+ s: 100)nd(Function(ter.pumpes    await tpump();
   ait tester.;
-      aw.last)ات')يئة الاتصالtext('هer.tap(find.ait test aw  
+      aw.last) millisecoDurationات')يئة الاتصالtext('هer.tap(find.ait test aw  
    AndSettle();mper.puest    await t
   '));اختر المنظمةind.text('tester.tap(ft      awaioad
  nt lmeer depart to triggtionct organiza     // Sele
@@ -125,9 +123,9 @@ er.pump(it test awat());
    tatus.thSs: Autu sta
            ,onsganizations: ornizati       orgaate(
       AuthSt   ns),
-       organizatiozations:tate(organi      AuthSle([
-    fromIterabStream.     (_) => Answer(
-   am).thentreuthBloc.s=> mockA) hen((    w  );
+       organizatiozations:tate(organi Function([
+    fromIterabStream.     (  Function( Function(_) _ => Answer(
+   am).thentreuthBloc.s=> mockA) Function AuthSle hen((    w  );
   ),
     ganizationsions: orrganizatState(o       AuthReturn(
  tate).thenc.slouthB mockAn(() =>
@@ -138,9 +136,9 @@ er.pump(it test awat());
   tester) ad', ( fail to lortmentspar when ded show errohoultWidgets('s  tes;
 
    })  get);
-  findsOneWidtions'),iza load organ'Failed toning(Contai(find.text expect   ayed
+  findsOneWidtions'),iza load organ'Failed toning(Function(find.text expect   ayed
    is displageessify error mVer //    
-  );
+  ) Contai;
 conds: 100)on(milliseationst Dur.pump(ctester await      p();
 pumr.wait teste
       aderTest());etUndgget(createWi.pumpWider test      await   );
@@ -369,11 +367,11 @@ nc (tester) asy selected', ole isn rn admi field whement hide departhouldidgets(
   });
     user'), equals('nt.roleisterEve  expect(reg
     );, equals(1)tmentId.deparisterEvent(regct expe(1));
-     equalszationId, ni.orgaquested)ReterthRegisEvent as Au((registerxpect      e;
-sNotNull)nt, iEvet(registerec     exp
+     equalszationId, ni.orgaquested)ReterthRegisEvent as Au((registerxpect      e,;
+sNotNull)nt, Function(registerec     exp
       
  
-      );ull,: () => n    orElseed,
+      ) iEvet;ull,: () => n    orElseed,
     questisterReuthRegt is Aenvent) => ev(ee(
         erstWhfiraptured. = crEventgistere     final       
  n(0));
@@ -393,8 +391,7 @@ Thaerngth, greattured.leapect(c expured;
    Select depar    // ();
 
   AndSettleumpester.p    await t  last);
-لات').صا'هيئة الاتd.text(inp(fr.tate await tes
-     e();tlpAndSettester.pum   await ;
+لات').صا'هيئة الاتd.text(Function(fr.tate await tes Function() e;tlpAndSettester.pum   await ;
    ر المنظمة')).text('اختap(findr.twait teste   a   ization
 lect organ// Se  ;
 
@@ -455,8 +452,8 @@ findsOn, wneptDropdo   expect(d);
 
     ,
   ,
-        )         )ts,
- artmendeptments:       depar     
+        )         ) inpts,
+ artmendeptments =       depar     
  ganizations, organizations:     or       State(
        Authvalue(
    m.) => Strea  (_    Answer(

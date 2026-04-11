@@ -5,11 +5,15 @@ import '../entities/exchange.dart';
 /// Exchange Repository interface
 abstract class ExchangeRepository {
   /// Create a new exchange (balance-based, optional transferId)
+  /// 
+  /// Either exchangeRate OR convertedAmount must be provided (not both required).
+  /// Backend v3.1+ supports converted_amount as alternative to exchange_rate.
   Future<Either<Failure, Exchange>> createExchange({
     int? transferId, // Optional - for balance-based exchanges
     required String targetCurrency, // 'SYP' or 'TRY'
     required double amountUsd,
-    required double exchangeRate,
+    double? exchangeRate, // Optional if convertedAmount is provided
+    double? convertedAmount, // Optional if exchangeRate is provided (Backend v3.1+)
     required DateTime exchangeDate,
     String? notes,
   });

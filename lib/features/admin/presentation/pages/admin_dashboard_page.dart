@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/config/flavor_config.dart';
+import '../../../../core/utils/responsive_utils.dart';
+import '../../../../core/widgets/error_display.dart';
 import '../../../../core/widgets/role_based_widget.dart';
+import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../../core/widgets/watermark_background.dart';
+import '../../../../core/extensions/localization_extension.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
@@ -19,25 +23,68 @@ class AdminDashboardPage extends StatefulWidget {
 }
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
+  DateTime? _selectedStartDate;
+  DateTime? _selectedEndDate;
+
   @override
   void initState() {
     super.initState();
+    
+    // Initialize date range to last 30 days
+    _selectedEndDate = DateTime.now();
+    _selectedStartDate = _selectedEndDate!.subtract(const Duration(days: 30));
     
     // Only load data if admin flavor and user is admin
     if (FlavorConfig.instance.isAdmin) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Check if user is actually admin before loading data
         if (context.isAdmin) {
-          context.read<AdminBloc>().add(const FetchAdminStatisticsRequested());
-          context.read<AdminBloc>().add(const FetchAllUserExpensesRequested());
+          _loadDashboardData();
         }
       });
     }
   }
 
+  void _loadDashboardData() {
+    context.read<AdminBloc>().add(const FetchDashboardStatsRequested());
+    context.read<AdminBloc>().add(const FetchUserActivityRequested());
+    context.read<AdminBloc>().add(const FetchExpenseSummariesRequested());
+    if (_selectedStartDate != null && _selectedEndDate != null) {
+      context.read<AdminBloc>().add(FetchAnalyticsRequested(
+        startDate: _selectedStartDate!,
+        endDate: _selectedEndDate!,
+      ));
+    }
+  }
+
+  Future<void> _selectDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: DateTimeRange(
+        start: _selectedStartDate ?? DateTime.now().subtract(const Duration(days: 30)),
+        end: _selectedEndDate ?? DateTime.now(),
+      ),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedStartDate = picked.start;
+        _selectedEndDate = picked.end;
+      });
+      
+      // Reload analytics with new date range
+      context.read<AdminBloc>().add(FetchAnalyticsRequested(
+        startDate: _selectedStartDate!,
+        endDate: _selectedEndDate!,
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = AppLocalizations.of(context)!;
     
     // Check if admin flavor is enabled
     if (!FlavorConfig.instance.isAdmin) {
@@ -101,6 +148,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         automaticallyImplyLeading: false, // Remove back arrow
         actions: [
           IconButton(
+            icon: const Icon(Icons.date_range),
+            tooltip: 'Select Date Range',
+            onPressed: _selectDateRange,
+          ),
+          IconButton(
             icon: const Icon(Icons.group),
             tooltip: 'Group Management',
             onPressed: () {
@@ -109,10 +161,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              context.read<AdminBloc>().add(const FetchAdminStatisticsRequested());
-              context.read<AdminBloc>().add(const FetchAllUserExpensesRequested());
-            },
+            onPressed: _loadDashboardData,
           ),
         ],
       ),
@@ -120,9 +169,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         child: BlocBuilder<AdminBloc, AdminState>(
           builder: (context, state) {
           if (state is AdminLoading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return _buildLoadingSkeleton(context);
           }
           
           if (state is AdminError) {
@@ -149,7 +196,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       onPressed: () {
                         Navigator.of(context).pop();
                       },
-                      child: Text(l10n.translate('go_back') ?? 'Go Back'),
+                      child: Text(l10n.translate('go_back')),
                     ),
                   ],
                 ),
@@ -164,25 +211,104 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               });
             }
             
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            return ErrorStateWidget(
+              title: l10n.translate('error_occurred'),
+              message: state.message,
+              icon: Icons.error_outline,
+              onRetry: () {
+                context.read<AdminBloc>().add(const FetchAdminStatisticsRequested());
+                context.read<AdminBloc>().add(const FetchAllUserExpensesRequested());
+              },
+            );
+          }
+          
+          // Handle new API-based states
+          if (state is AdminDashboardStatsLoaded) {
+            return RefreshIndicator(
+              onRefresh: () async {
+                _loadDashboardData();
+              },
+              child: ListView(
+                padding: const EdgeInsets.all(16),
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  // Date Range Selector
+                  _buildDateRangeSelector(context, l10n),
                   const SizedBox(height: 16),
-                  Text(
-                    state.message,
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
+                  
+                  // Statistics Cards from API
+                  _buildApiStatisticsSection(context, state, l10n),
+                  const SizedBox(height: 24),
+                  
+                  // Info message
+                  Card(
+                    color: Colors.blue.shade50,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.blue.shade700),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Dashboard data is filtered by your admin group. Only members of your group are included.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
+                ],
+              ),
+            );
+          }
+          
+          if (state is AdminUserActivityLoaded) {
+            return RefreshIndicator(
+              onRefresh: () async {
+                _loadDashboardData();
+              },
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _buildDateRangeSelector(context, l10n),
                   const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<AdminBloc>().add(const FetchAdminStatisticsRequested());
-                      context.read<AdminBloc>().add(const FetchAllUserExpensesRequested());
-                    },
-                    child: Text(l10n.translate('retry')),
-                  ),
+                  _buildUserActivityList(context, state, l10n),
+                ],
+              ),
+            );
+          }
+          
+          if (state is AdminExpenseSummariesLoaded) {
+            return RefreshIndicator(
+              onRefresh: () async {
+                _loadDashboardData();
+              },
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _buildDateRangeSelector(context, l10n),
+                  const SizedBox(height: 16),
+                  _buildExpenseSummaries(context, state, l10n),
+                ],
+              ),
+            );
+          }
+          
+          if (state is AdminAnalyticsLoaded) {
+            return RefreshIndicator(
+              onRefresh: () async {
+                _loadDashboardData();
+              },
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _buildDateRangeSelector(context, l10n),
+                  const SizedBox(height: 16),
+                  _buildAnalyticsSection(context, state, l10n),
                 ],
               ),
             );
@@ -191,12 +317,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           if (state is AdminLoaded) {
             return RefreshIndicator(
               onRefresh: () async {
-                context.read<AdminBloc>().add(const FetchAdminStatisticsRequested());
-                context.read<AdminBloc>().add(const FetchAllUserExpensesRequested());
+                _loadDashboardData();
               },
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  // Date Range Selector
+                  _buildDateRangeSelector(context, l10n),
+                  const SizedBox(height: 16),
+                  
                   // Statistics Cards
                   _buildStatisticsSection(context, state, l10n),
                   const SizedBox(height: 24),
@@ -218,6 +347,402 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           },
         ),
       ),
+    );
+  }
+
+  /// Build skeleton loading state for dashboard
+  Widget _buildLoadingSkeleton(BuildContext context) {
+    final crossAxisCount = ResponsiveUtils.getResponsiveGridCrossAxisCount(context);
+
+    return Semantics(
+      label: 'Loading dashboard data',
+      child: ListView(
+        padding: ResponsiveUtils.getResponsivePadding(context),
+        children: [
+          // Date range selector skeleton
+          const SkeletonCard(height: 72),
+          const SizedBox(height: 16),
+
+          // Statistics title skeleton
+          SkeletonLoader(
+            width: 120,
+            height: 24,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          const SizedBox(height: 12),
+
+          // Statistics grid skeleton
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.5,
+            ),
+            itemCount: 6,
+            itemBuilder: (context, index) => const SkeletonCard(height: 100),
+          ),
+          const SizedBox(height: 24),
+
+          // Recent expenses title skeleton
+          SkeletonLoader(
+            width: 180,
+            height: 24,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          const SizedBox(height: 12),
+
+          // Expense list skeleton
+          ...List.generate(3, (index) => const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: SkeletonListItem(height: 80),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateRangeSelector(BuildContext context, AppLocalizations l10n) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.date_range),
+        title: Text(l10n.translate('date_range')),
+        subtitle: _selectedStartDate != null && _selectedEndDate != null
+            ? Text(
+                '${_selectedStartDate!.day}/${_selectedStartDate!.month}/${_selectedStartDate!.year} - '
+                '${_selectedEndDate!.day}/${_selectedEndDate!.month}/${_selectedEndDate!.year}',
+              )
+            : Text(l10n.translate('select_date_range')),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: _selectDateRange,
+      ),
+    );
+  }
+
+  Widget _buildApiStatisticsSection(BuildContext context, AdminDashboardStatsLoaded state, AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.translate('statistics'),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.5,
+          children: [
+            _buildStatCard(
+              context,
+              icon: Icons.people,
+              title: l10n.translate('total_users'),
+              value: state.totalUsers.toString(),
+              color: Colors.blue,
+            ),
+            _buildStatCard(
+              context,
+              icon: Icons.receipt_long,
+              title: l10n.translate('total_expenses'),
+              value: state.totalExpenses.toString(),
+              color: Colors.green,
+            ),
+            _buildStatCard(
+              context,
+              icon: Icons.arrow_downward,
+              title: l10n.translate('total_income'),
+              value: state.totalIncome.toString(),
+              color: Colors.orange,
+            ),
+            _buildStatCard(
+              context,
+              icon: Icons.swap_horiz,
+              title: l10n.translate('total_transfers'),
+              value: state.totalTransfers.toString(),
+              color: Colors.purple,
+            ),
+            _buildStatCard(
+              context,
+              icon: Icons.attach_money,
+              title: l10n.translate('expense_amount'),
+              value: '\$${state.totalAmountExpenses.toStringAsFixed(2)}',
+              color: Colors.red,
+            ),
+            _buildStatCard(
+              context,
+              icon: Icons.account_balance_wallet,
+              title: l10n.translate('fund_box_balance'),
+              value: '\$${state.fundBoxBalance.toStringAsFixed(2)}',
+              color: Colors.teal,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUserActivityList(BuildContext context, AdminUserActivityLoaded state, AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.translate('user_activity'),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (state.userActivity.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Text(l10n.translate('no_user_activity')),
+              ),
+            ),
+          )
+        else
+          ...state.userActivity.map((user) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: CircleAvatar(
+                child: Text(
+                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                ),
+              ),
+              title: Text(user.name),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(user.email, style: const TextStyle(fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Role: ${user.role}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  if (user.lastLogin != null)
+                    Text(
+                      'Last login: ${user.lastLogin!.day}/${user.lastLogin!.month}/${user.lastLogin!.year}',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                ],
+              ),
+              trailing: Chip(
+                label: Text(user.role),
+                backgroundColor: user.role == 'admin' 
+                    ? Colors.orange.withValues(alpha: 0.2)
+                    : Colors.blue.withValues(alpha: 0.2),
+              ),
+            ),
+          )),
+      ],
+    );
+  }
+
+  Widget _buildExpenseSummaries(BuildContext context, AdminExpenseSummariesLoaded state, AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.translate('expense_summaries'),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // By Category
+        if (state.summary.byCategory.isNotEmpty) ...[
+          Text(
+            l10n.translate('by_category'),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...state.summary.byCategory.map((category) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: const Icon(Icons.category),
+              title: Text(category.category),
+              subtitle: Text('${category.count} expenses'),
+              trailing: Text(
+                '\$${category.total.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          )),
+          const SizedBox(height: 16),
+        ],
+        
+        // By Payment Method
+        if (state.summary.byPaymentMethod.isNotEmpty) ...[
+          Text(
+            l10n.translate('by_payment_method'),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...state.summary.byPaymentMethod.map((method) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: const Icon(Icons.payment),
+              title: Text(method.paymentMethod),
+              trailing: Text(
+                '\$${method.total.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          )),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAnalyticsSection(BuildContext context, AdminAnalyticsLoaded state, AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.translate('analytics'),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // Period Info
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Period: ${state.analytics.period.from} to ${state.analytics.period.to}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                
+                // Expenses
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.translate('expenses'),
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        Text(
+                          '\$${state.analytics.expenses.total.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        Text(
+                          '${state.analytics.expenses.count} items',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          l10n.translate('income'),
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        Text(
+                          '\$${state.analytics.income.total.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                        Text(
+                          '${state.analytics.income.count} items',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                
+                // Net Balance
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      l10n.translate('net_balance'),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '\$${state.analytics.netBalance.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: state.analytics.netBalance >= 0 ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Monthly Trends
+        if (state.analytics.trends.monthly.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            l10n.translate('monthly_trends'),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...state.analytics.trends.monthly.map((trend) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: const Icon(Icons.calendar_month),
+              title: Text(trend.month),
+              subtitle: Row(
+                children: [
+                  Text(
+                    'Expenses: \$${trend.expenses.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 11, color: Colors.red),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Income: \$${trend.income.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 11, color: Colors.green),
+                  ),
+                ],
+              ),
+            ),
+          )),
+        ],
+      ],
     );
   }
 
@@ -423,7 +948,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: color, width: 1),
       ),
@@ -473,12 +998,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 ),
                 title: Text(username),
                 trailing: Chip(
-                  label: Text('$count ${l10n.translate('expenses') ?? 'expenses'}'),
-                  backgroundColor: Colors.blue.withOpacity(0.2),
+                  label: Text('$count ${l10n.translate('expenses')}'),
+                  backgroundColor: Colors.blue.withValues(alpha: 0.2),
                 ),
               ),
             );
-          }).toList(),
+          }),
       ],
     );
   }

@@ -9,11 +9,11 @@ class JoinGroupForm extends StatefulWidget {
   final String? errorMessage;
 
   const JoinGroupForm({
-    Key? key,
+    super.key,
     required this.onSubmit,
     this.isLoading = false,
     this.errorMessage,
-  }) : super(key: key);
+  });
 
   @override
   State<JoinGroupForm> createState() => _JoinGroupFormState();
@@ -46,18 +46,18 @@ class _JoinGroupFormState extends State<JoinGroupForm> {
 
   String? _validateCode(String? value) {
     if (value == null || value.isEmpty) {
-      return AppLocalizations.of(context).translate('admin_group.code_required') ??
+      return AppLocalizations.of(context)?.codeRequired ??
           'Group code is required';
     }
 
     if (value.length != 6) {
-      return AppLocalizations.of(context).translate('admin_group.code_must_be_6') ??
+      return AppLocalizations.of(context)?.codeMustBe6 ??
           'Code must be exactly 6 characters';
     }
 
     final alphanumericRegex = RegExp(r'^[a-zA-Z0-9]+$');
     if (!alphanumericRegex.hasMatch(value)) {
-      return AppLocalizations.of(context).translate('admin_group.code_invalid_chars') ??
+      return AppLocalizations.of(context)?.codeInvalidChars ??
           'Code must contain only letters and numbers';
     }
 
@@ -93,7 +93,7 @@ class _JoinGroupFormState extends State<JoinGroupForm> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    AppLocalizations.of(context).translate('admin_group.join_instructions') ??
+                    AppLocalizations.of(context)?.joinInstructions ??
                         'Enter the 6-character group code provided by your admin to join their group.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withOpacity(0.8),
@@ -163,7 +163,7 @@ class _JoinGroupFormState extends State<JoinGroupForm> {
               ),
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: theme.colorScheme.onPrimary,
-              disabledBackgroundColor: theme.colorScheme.surfaceVariant,
+              disabledBackgroundColor: theme.colorScheme.surfaceContainerHighest,
               disabledForegroundColor: theme.colorScheme.onSurfaceVariant,
             ),
             child: widget.isLoading
@@ -183,7 +183,7 @@ class _JoinGroupFormState extends State<JoinGroupForm> {
                       const Icon(Icons.group_add),
                       const SizedBox(width: 8),
                       Text(
-                        AppLocalizations.of(context).translate('admin_group.join_group') ??
+                        AppLocalizations.of(context)?.joinGroup ??
                             'Join Group',
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: theme.colorScheme.onPrimary,
@@ -198,7 +198,7 @@ class _JoinGroupFormState extends State<JoinGroupForm> {
           const SizedBox(height: 16),
           Center(
             child: Text(
-              AppLocalizations.of(context).translate('admin_group.join_help') ??
+              AppLocalizations.of(context)?.joinHelp ??
                   'Don\'t have a code? Contact your admin.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),

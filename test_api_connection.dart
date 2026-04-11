@@ -1,5 +1,6 @@
 /// Quick test script to check if Laravel API is reachable
 /// Run with: dart run test_api_connection.dart
+library;
 
 import 'dart:io';
 import 'dart:async';

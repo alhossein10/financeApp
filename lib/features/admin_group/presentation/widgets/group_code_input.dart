@@ -12,14 +12,14 @@ class GroupCodeInput extends StatefulWidget {
   final bool autofocus;
 
   const GroupCodeInput({
-    Key? key,
+    super.key,
     this.controller,
     this.errorText,
     this.onChanged,
     this.onSubmitted,
     this.enabled = true,
     this.autofocus = false,
-  }) : super(key: key);
+  });
 
   @override
   State<GroupCodeInput> createState() => _GroupCodeInputState();
@@ -68,19 +68,19 @@ class _GroupCodeInputState extends State<GroupCodeInput> {
 
     // Check length
     if (code.length < 6) {
-      return AppLocalizations.of(context).translate('admin_group.code_too_short') ??
+      return AppLocalizations.of(context)?.codeTooShort ??
           'Code must be 6 characters';
     }
 
     if (code.length > 6) {
-      return AppLocalizations.of(context).translate('admin_group.code_too_long') ??
+      return AppLocalizations.of(context)?.codeTooLong ??
           'Code must be exactly 6 characters';
     }
 
     // Check if alphanumeric
     final alphanumericRegex = RegExp(r'^[a-zA-Z0-9]+$');
     if (!alphanumericRegex.hasMatch(code)) {
-      return AppLocalizations.of(context).translate('admin_group.code_invalid_chars') ??
+      return AppLocalizations.of(context)?.codeInvalidChars ??
           'Code must contain only letters and numbers';
     }
 
@@ -103,7 +103,7 @@ class _GroupCodeInputState extends State<GroupCodeInput> {
       children: [
         // Label
         Text(
-          AppLocalizations.of(context).translate('admin_group.group_code') ?? 'Group Code',
+          AppLocalizations.of(context)?.groupCode ?? 'Group Code',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -171,7 +171,7 @@ class _GroupCodeInputState extends State<GroupCodeInput> {
             filled: true,
             fillColor: widget.enabled
                 ? theme.colorScheme.surface
-                : theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                : theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 20,
@@ -214,7 +214,7 @@ class _GroupCodeInputState extends State<GroupCodeInput> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                AppLocalizations.of(context).translate('admin_group.get_from_admin') ??
+                AppLocalizations.of(context)?.getFromAdmin ??
                     'Get this code from your admin',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurface.withOpacity(0.6),
@@ -240,7 +240,7 @@ class _GroupCodeInputState extends State<GroupCodeInput> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                AppLocalizations.of(context).translate('admin_group.code_requirements') ??
+                AppLocalizations.of(context)?.codeRequirements ??
                     'Code Requirements:',
                 style: theme.textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.w600,

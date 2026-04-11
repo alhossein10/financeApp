@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/group_member.dart';
+import 'member_fund_box_balance.dart';
 
 /// Widget to display a group member's information with optional remove button
 class GroupMemberCard extends StatelessWidget {
@@ -10,30 +11,30 @@ class GroupMemberCard extends StatelessWidget {
   final bool isCurrentUser;
 
   const GroupMemberCard({
-    Key? key,
+    super.key,
     required this.member,
     this.showRemoveButton = true,
     this.onRemove,
     this.isCurrentUser = false,
-  }) : super(key: key);
+  });
 
   Future<void> _showRemoveConfirmation(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          AppLocalizations.of(context).translate('admin_group.confirm_remove_title') ??
+          AppLocalizations.of(context)?.confirmRemoveTitle ??
               'Remove Member',
         ),
         content: Text(
-          AppLocalizations.of(context).translate('admin_group.confirm_remove') ??
+          AppLocalizations.of(context)?.confirmRemove ??
               'Are you sure you want to remove this member from the group?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(
-              AppLocalizations.of(context).translate('cancel') ?? 'Cancel',
+              AppLocalizations.of(context)?.cancel ?? 'Cancel',
             ),
           ),
           TextButton(
@@ -42,7 +43,7 @@ class GroupMemberCard extends StatelessWidget {
               foregroundColor: Theme.of(context).colorScheme.error,
             ),
             child: Text(
-              AppLocalizations.of(context).translate('admin_group.remove_member') ??
+              AppLocalizations.of(context)?.removeMember ??
                   'Remove',
             ),
           ),
@@ -58,7 +59,6 @@ class GroupMemberCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isRTL = Directionality.of(context) == TextDirection.rtl;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -70,17 +70,22 @@ class GroupMemberCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            // Avatar
+            // Avatar with profile photo
             CircleAvatar(
               radius: 24,
               backgroundColor: theme.colorScheme.primaryContainer,
-              child: Text(
-                _getInitials(member.name),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              backgroundImage: member.profileImageUrl != null && member.profileImageUrl!.isNotEmpty
+                  ? NetworkImage(member.profileImageUrl!)
+                  : null,
+              child: member.profileImageUrl == null || member.profileImageUrl!.isEmpty
+                  ? Text(
+                      _getInitials(member.name),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(width: 16),
             
@@ -116,7 +121,7 @@ class GroupMemberCard extends StatelessWidget {
                             ),
                           ),
                           child: Text(
-                            AppLocalizations.of(context).translate('admin_group.admin_badge') ??
+                            AppLocalizations.of(context)?.adminBadge ??
                                 'Admin',
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: theme.colorScheme.primary,
@@ -196,6 +201,13 @@ class GroupMemberCard extends StatelessWidget {
                       ],
                     ),
                   ],
+                  
+                  // Fund Box Balance (for SuperAdmin viewing Admin, or Admin viewing Users)
+                  MemberFundBoxBalance(
+                    userId: member.id,
+                    userRole: member.role,
+                    isCurrentUser: isCurrentUser,
+                  ),
                 ],
               ),
             ),
@@ -208,7 +220,7 @@ class GroupMemberCard extends StatelessWidget {
                   color: theme.colorScheme.error,
                 ),
                 onPressed: () => _showRemoveConfirmation(context),
-                tooltip: AppLocalizations.of(context).translate('admin_group.remove_member') ??
+                tooltip: AppLocalizations.of(context)?.removeMember ??
                     'Remove member',
               ),
             
@@ -217,7 +229,7 @@ class GroupMemberCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 8),
                 child: Tooltip(
-                  message: AppLocalizations.of(context).translate('admin_group.cannot_remove_self') ??
+                  message: AppLocalizations.of(context)?.cannotRemoveSelf ??
                       'You cannot remove yourself',
                   child: Icon(
                     Icons.person,

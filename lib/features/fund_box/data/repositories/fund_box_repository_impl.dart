@@ -18,11 +18,12 @@ class FundBoxRepositoryImpl implements FundBoxRepository {
   Future<Either<Failure, FundBox>> getFundBoxByUser(int userId, {String? currency}) async {
     try {
       print('[FundBoxRepository] Getting fund box for userId: $userId, currency: $currency');
-      // NOTE: Data scoping by admin_group_id is handled automatically by the Laravel backend.
-      // The API returns the fund box for the authenticated user's admin group based on their token.
-      // Each admin group has its own fund box, and users can only access their group's fund box.
-      // The userId parameter is ignored as the API uses the authenticated user's token.
-      final fundBoxDto = await apiDataSource.getFundBox(currency: currency);
+      
+      // If userId is provided and different from current user, use getFundBoxByUserId
+      // Otherwise, use the standard getFundBox endpoint
+      // Note: We need to get current user ID from auth context to compare
+      // For now, we'll use getFundBoxByUserId if userId is provided (Admin/SuperAdmin use case)
+      final fundBoxDto = await apiDataSource.getFundBoxByUserId(userId, currency: currency);
       print('[FundBoxRepository] Received DTO: id=${fundBoxDto.id}, USD=${fundBoxDto.balanceUsd}, SYP=${fundBoxDto.balanceSyp}, TRY=${fundBoxDto.balanceTry}');
       print('[FundBoxRepository] DTO lastUpdated: ${fundBoxDto.lastUpdated}');
       print('[FundBoxRepository] DTO lastCalculatedAt: ${fundBoxDto.lastCalculatedAt}');
@@ -43,7 +44,19 @@ class FundBoxRepositoryImpl implements FundBoxRepository {
     } on ApiException catch (e) {
       print('[FundBoxRepository] ❌ ApiException: ${e.statusCode} - ${e.message}');
       if (e.statusCode == 403) {
-        return Left(AuthorizationFailure('Access denied. Admin privileges required.'));
+        return Left(AuthorizationFailure('Access denied. Admin/SuperAdmin privileges required.'));
+      } else if (e.statusCode == 404) {
+        // If endpoint doesn't support user_id parameter, fall back to standard endpoint
+        // This handles cases where backend hasn't implemented user_id parameter yet
+        print('[FundBoxRepository] User-specific endpoint not found, trying standard endpoint...');
+        try {
+          final fallbackDto = await apiDataSource.getFundBox(currency: currency);
+          final entity = fallbackDto.toEntity();
+          return Right(entity);
+        } catch (fallbackError) {
+          print('[FundBoxRepository] Fallback also failed: $fallbackError');
+          return Left(ServerFailure('User fund box not found'));
+        }
       }
       return Left(ServerFailure(e.message));
     } catch (e, stackTrace) {

@@ -1,0 +1,7 @@
+#include "Generated.xcconfig"
+
+// SuperAdmin flavor configuration
+PRODUCT_BUNDLE_IDENTIFIER = com.app.finance.superadmin
+APP_DISPLAY_NAME = الإدارة المالية (سوبر)
+FLUTTER_TARGET = lib/main_superadmin.dart
+

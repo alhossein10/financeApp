@@ -9,11 +9,11 @@ class ConflictResolutionDialog extends StatefulWidget {
   final Function(ConflictStrategy strategy, Map<String, dynamic>? data) onResolve;
 
   const ConflictResolutionDialog({
-    Key? key,
+    super.key,
     required this.conflict,
     required this.entityType,
     required this.onResolve,
-  }) : super(key: key);
+  });
 
   @override
   State<ConflictResolutionDialog> createState() => 
@@ -136,11 +136,11 @@ class ConflictListDialog extends StatelessWidget {
   final Function(int index, ConflictStrategy strategy) onResolve;
 
   const ConflictListDialog({
-    Key? key,
+    super.key,
     required this.conflicts,
     required this.entityType,
     required this.onResolve,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

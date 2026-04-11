@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 enum AppFlavor {
   superAdmin,
   admin,
@@ -6,6 +8,21 @@ enum AppFlavor {
   bool get isSuperAdmin => this == AppFlavor.superAdmin;
   bool get isAdmin => this == AppFlavor.admin;
   bool get isUser => this == AppFlavor.user;
+}
+
+/// Navigation destination definition for flavor-specific navigation
+class FlavorNavigationDestination {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String labelKey;
+  final String route;
+
+  const FlavorNavigationDestination({
+    required this.icon,
+    required this.selectedIcon,
+    required this.labelKey,
+    required this.route,
+  });
 }
 
 class FlavorConfig {
@@ -28,6 +45,12 @@ class FlavorConfig {
   final bool enableSuperAdminExpensesPage;
   final bool showIncomingTransfers;
   final bool showExchangeHistory;
+  
+  // Feature flags for granular control
+  final Map<String, bool> featureFlags;
+  
+  // Navigation destinations for this flavor
+  final List<FlavorNavigationDestination> navigationDestinations;
 
   const FlavorConfig({
     required this.flavor,
@@ -47,6 +70,8 @@ class FlavorConfig {
     this.enableSuperAdminExpensesPage = false,
     this.showIncomingTransfers = true,
     this.showExchangeHistory = true,
+    this.featureFlags = const {},
+    this.navigationDestinations = const [],
   });
 
   static FlavorConfig? _instance;
@@ -69,13 +94,43 @@ class FlavorConfig {
         enableExportModule: false, // Disabled for SuperAdmin - no export page
         requiresAdminRole: true,
         enableAdminDashboard: false, // SuperAdmin has different dashboard
-        enableFundBox: false, // Disabled for SuperAdmin - no fund-box functionality
+        enableFundBox: true, // SuperAdmin can view fund box
         enableAuditLogs: true,
         enableUserManagement: true,
         enableSuperAdminCashPage: true,
         enableSuperAdminExpensesPage: true,
         showIncomingTransfers: false, // SuperAdmin only sees outgoing transfers
         showExchangeHistory: false, // No exchange history for SuperAdmin
+        featureFlags: {
+          'canCreateExpenses': false, // SuperAdmin cannot create expenses
+          'canExchangeCurrency': false, // SuperAdmin cannot exchange currency
+          'canExportData': false, // SuperAdmin cannot export data
+          'canManageGroup': true, // SuperAdmin can manage admin groups
+          'canViewAnalytics': true, // SuperAdmin can view analytics
+          'canTransferFunds': true, // SuperAdmin can transfer to admins
+          'canViewTransfers': true, // SuperAdmin can view transfers
+          'canManageIncoming': true, // SuperAdmin can add incoming amounts
+        },
+        navigationDestinations: [
+          FlavorNavigationDestination(
+            icon: Icons.group_outlined,
+            selectedIcon: Icons.group,
+            labelKey: 'admin_group.group_management',
+            route: '/group-management',
+          ),
+          FlavorNavigationDestination(
+            icon: Icons.inbox_outlined,
+            selectedIcon: Icons.inbox,
+            labelKey: 'cash_inbox',
+            route: '/cash',
+          ),
+          FlavorNavigationDestination(
+            icon: Icons.analytics_outlined,
+            selectedIcon: Icons.analytics,
+            labelKey: 'analytics',
+            route: '/analytics',
+          ),
+        ],
       );
     } else if (flavor == AppFlavor.admin) {
       _instance = const FlavorConfig(
@@ -96,6 +151,48 @@ class FlavorConfig {
         enableSuperAdminExpensesPage: false,
         showIncomingTransfers: true,
         showExchangeHistory: true,
+        featureFlags: {
+          'canCreateExpenses': true, // Admin can create expenses
+          'canExchangeCurrency': true, // Admin can exchange currency
+          'canExportData': true, // Admin can export data
+          'canManageGroup': true, // Admin can manage user groups
+          'canViewAnalytics': false, // Admin cannot view global analytics
+          'canTransferFunds': true, // Admin can transfer to users
+          'canViewTransfers': true, // Admin can view transfers
+          'canManageIncoming': false, // Admin cannot add incoming amounts
+        },
+        navigationDestinations: [
+          FlavorNavigationDestination(
+            icon: Icons.group_outlined,
+            selectedIcon: Icons.group,
+            labelKey: 'admin_group.group_management',
+            route: '/group-management',
+          ),
+          FlavorNavigationDestination(
+            icon: Icons.account_balance_wallet_outlined,
+            selectedIcon: Icons.account_balance_wallet,
+            labelKey: 'cash',
+            route: '/cash',
+          ),
+          FlavorNavigationDestination(
+            icon: Icons.currency_exchange_outlined,
+            selectedIcon: Icons.currency_exchange,
+            labelKey: 'convert',
+            route: '/exchange',
+          ),
+          FlavorNavigationDestination(
+            icon: Icons.receipt_long_outlined,
+            selectedIcon: Icons.receipt_long,
+            labelKey: 'expenses',
+            route: '/expenses',
+          ),
+          FlavorNavigationDestination(
+            icon: Icons.ios_share_outlined,
+            selectedIcon: Icons.ios_share,
+            labelKey: 'export',
+            route: '/export',
+          ),
+        ],
       );
     } else {
       _instance = const FlavorConfig(
@@ -116,6 +213,42 @@ class FlavorConfig {
         enableSuperAdminExpensesPage: false,
         showIncomingTransfers: true,
         showExchangeHistory: true,
+        featureFlags: {
+          'canCreateExpenses': true, // User can create expenses
+          'canExchangeCurrency': true, // User can exchange currency
+          'canExportData': true, // User can export data
+          'canManageGroup': false, // User cannot manage groups
+          'canViewAnalytics': false, // User cannot view analytics
+          'canTransferFunds': false, // User cannot transfer funds
+          'canViewTransfers': true, // User can view incoming transfers
+          'canManageIncoming': false, // User cannot add incoming amounts
+        },
+        navigationDestinations: [
+          FlavorNavigationDestination(
+            icon: Icons.inbox_outlined,
+            selectedIcon: Icons.inbox,
+            labelKey: 'cash_inbox',
+            route: '/cash',
+          ),
+          FlavorNavigationDestination(
+            icon: Icons.currency_exchange_outlined,
+            selectedIcon: Icons.currency_exchange,
+            labelKey: 'convert',
+            route: '/exchange',
+          ),
+          FlavorNavigationDestination(
+            icon: Icons.receipt_long_outlined,
+            selectedIcon: Icons.receipt_long,
+            labelKey: 'expenses',
+            route: '/expenses',
+          ),
+          FlavorNavigationDestination(
+            icon: Icons.ios_share_outlined,
+            selectedIcon: Icons.ios_share,
+            labelKey: 'export',
+            route: '/export',
+          ),
+        ],
       );
     }
   }
@@ -133,5 +266,21 @@ class FlavorConfig {
   /// This should be used in combination with RoleService
   bool canAccessAdminFeatures(bool userIsAdmin) {
     return requiresAdminRole && userIsAdmin;
+  }
+  
+  /// Check if a specific feature is enabled
+  bool isFeatureEnabled(String featureKey) {
+    return featureFlags[featureKey] ?? false;
+  }
+  
+  /// Get navigation destinations for this flavor
+  List<FlavorNavigationDestination> getNavigationDestinations() {
+    return navigationDestinations;
+  }
+  
+  /// Get the default home route for this flavor
+  String get defaultHomeRoute {
+    if (navigationDestinations.isEmpty) return '/';
+    return navigationDestinations.first.route;
   }
 }

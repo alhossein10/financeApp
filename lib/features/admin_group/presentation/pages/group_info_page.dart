@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../../../core/utils/date_formatter.dart';
 import '../bloc/admin_group_bloc.dart';
 import '../bloc/admin_group_event.dart';
 import '../bloc/admin_group_state.dart';
@@ -17,7 +16,7 @@ import '../widgets/group_code_display.dart';
 /// 
 /// Requirements: 3.1-3.6
 class GroupInfoPage extends StatefulWidget {
-  const GroupInfoPage({Key? key}) : super(key: key);
+  const GroupInfoPage({super.key});
 
   @override
   State<GroupInfoPage> createState() => _GroupInfoPageState();
@@ -48,7 +47,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          l10n.translate('admin_group.my_group') ?? 'My Group',
+          l10n?.myGroup ?? 'My Group',
         ),
         centerTitle: true,
         elevation: 0,
@@ -120,7 +119,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           _buildInfoRow(
                             context,
                             icon: Icons.group,
-                            label: l10n.translate('admin_group.group_name') ??
+                            label: l10n?.groupName ??
                                 'Group Name',
                             value: groupInfo.groupName ?? 'N/A',
                           ),
@@ -130,7 +129,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           _buildInfoRow(
                             context,
                             icon: Icons.person,
-                            label: l10n.translate('admin_group.admin_contact') ??
+                            label: l10n?.adminContact ??
                                 'Admin',
                             value: groupInfo.adminName,
                           ),
@@ -140,7 +139,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           _buildInfoRow(
                             context,
                             icon: Icons.email,
-                            label: l10n.translate('email') ?? 'Email',
+                            label: l10n?.email ?? 'Email',
                             value: groupInfo.adminEmail,
                           ),
                           const Divider(height: 24),
@@ -149,7 +148,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           _buildInfoRow(
                             context,
                             icon: Icons.people,
-                            label: l10n.translate('admin_group.members_count') ??
+                            label: l10n?.membersCount ??
                                 'Members',
                             value: '${groupInfo.membersCount}',
                           ),
@@ -159,7 +158,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           _buildInfoRow(
                             context,
                             icon: Icons.calendar_today,
-                            label: l10n.translate('admin_group.joined_at') ??
+                            label: l10n?.joinedAt ??
                                 'Joined',
                             value: '${groupInfo.joinedAt.year}-${groupInfo.joinedAt.month.toString().padLeft(2, '0')}-${groupInfo.joinedAt.day.toString().padLeft(2, '0')}',
                           ),
@@ -189,7 +188,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            l10n.translate('admin_group.contact_admin_to_leave') ??
+                            l10n?.contactAdminToLeave ??
                                 'Contact your admin to leave the group',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurface.withOpacity(0.8),
@@ -277,7 +276,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             ElevatedButton.icon(
               onPressed: _handleRefresh,
               icon: const Icon(Icons.refresh),
-              label: Text(l10n.translate('retry') ?? 'Retry'),
+              label: Text(l10n?.retry ?? 'Retry'),
             ),
           ],
         ),
@@ -302,7 +301,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             ),
             const SizedBox(height: 24),
             Text(
-              l10n.translate('admin_group.not_in_group') ??
+              l10n?.notInGroup ??
                   'You are not in a group',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
@@ -311,7 +310,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              l10n.translate('admin_group.not_in_group_desc') ??
+              l10n?.notInGroupDesc ??
                   'Join a group using a code provided by your admin to access shared financial data.',
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
@@ -323,7 +322,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
               onPressed: _navigateToJoinGroup,
               icon: const Icon(Icons.group_add),
               label: Text(
-                l10n.translate('admin_group.join_group') ?? 'Join Group',
+                l10n?.joinGroup ?? 'Join Group',
               ),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(

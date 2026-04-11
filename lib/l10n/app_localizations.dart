@@ -1,1091 +1,2702 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-class AppLocalizations {
-  final Locale locale;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
 
-  AppLocalizations(this.locale);
+import 'app_localizations_ar.dart';
+import 'app_localizations_en.dart';
 
-  static AppLocalizations of(BuildContext context) {
-    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+// ignore_for_file: type=lint
+
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+
+  final String localeName;
+
+  static AppLocalizations? of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
-  static final Map<String, Map<String, String>> _localizedValues = {
-    'en': {
-      'app_title': 'Finance App',
-      'cash': 'Cash',
-      'convert': 'Convert',
-      'expenses': 'Expenses',
-      'export': 'Export',
-      'fund_box_usd': 'Fund Box (USD)',
-      'set_fund_balance': 'Set Fund Balance (USD)',
-      'cancel': 'Cancel',
-      'save': 'Save',
-      'transfer': 'Transfer',
-      'transfers': 'Transfers',
-      'new_transfer': 'New Transfer',
-      'transfer_created': 'Transfer created successfully',
-      'transfer_deleted': 'Transfer deleted successfully',
-      'recipient_name': 'Recipient name',
-      'create_outgoing_transfer': 'Create Outgoing Transfer',
-      'outgoing_transfers': 'Outgoing Transfers',
-      'no_outgoing_transfers': 'No outgoing transfers yet',
-      'no_admin_members_available': 'No admin members available',
-      'fund_box_balance': 'Fund Box Balance',
-      'please_fill_all_fields': 'Please fill all required fields',
-      'amount_usd': 'Amount USD',
-      'converted_amount': 'Converted Amount (USD → SYP)',
-      'exchange_rate': 'Exchange Rate (USD → SYP)',
-      'converted_total_syp': 'Converted Total (SYP)',
-      'create': 'Create',
-      'edit_conversion': 'Edit conversion',
-      'edit_transfer_conversion': 'Edit Transfer Conversion',
-      'refund_delete': 'Refund and delete',
-      'delete': 'Delete',
-      'no_syp_recorded': 'No SYP recorded',
-      'converted_amount_error': 'Converted amount cannot exceed total transfer amount',
-      'usd_syp_rate': 'USD → SYP rate',
-      'usd': 'USD',
-      'syp': 'SYP',
-      'try': 'TRY',
-      'currency': 'Currency',
-      'all': 'All',
-      'add_expense': 'Add expense',
-      'new_expense': 'New Expense',
-      'edit_expense': 'Edit Expense',
-      'item_description': 'Item description *',
-      'expense_date': 'Expense Date',
-      'price_usd': 'Price USD',
-      'price_syp': 'Price SYP',
-      'price_try': 'Price TRY',
-      'invoice_status': 'Invoice status',
-      'invoice_available': 'Invoice available',
-      'no_invoice_available': 'No invoice available',
-      'no_file_selected': 'No file selected',
-      'upload': 'Upload',
-      'edit': 'Edit',
-      'date': 'Date',
-      'today': 'Today',
-      'this_week': 'This Week',
-      'this_month': 'This Month',
-      'custom': 'Custom',
-      'export_pdf': 'Export PDF',
-      'export_excel': 'Export Excel',
-      'expenses_list': 'Expenses List',
-      'description': 'Description',
-      'invoice': 'Invoice',
-      'yes': 'Yes',
-      'no': 'No',
-      'outgoing': 'Outgoing',
-      'incoming': 'Incoming',
-      'add_incoming': 'Add Incoming',
-      'new_incoming': 'New Incoming',
-      'edit_incoming': 'Edit Incoming',
-      'transaction_date': 'Transaction Date',
-      'search': 'Search',
-      'search_by_name': 'Search by recipient name',
-      'this_year': 'This Year',
-      'summary': 'Summary',
-      'total': 'Total',
-      'take_photo': 'Take Photo',
-      'from_gallery': 'From Gallery',
-      'photo_saved': 'Photo saved successfully',
-      'no_camera': 'No camera available',
-      'export_cash': 'Export Cash',
-      'export_invoices': 'Export Invoices',
-      'add_exchange': 'Add Exchange',
-      'exchange_history': 'Exchange History',
-      'no_exchanges': 'No exchange history',
-      'cash_transactions': 'Cash Transactions',
-      'invoice_images': 'Invoice Images',
-      'no_invoice_images': 'No invoice images found',
-      'welcome': 'Welcome',
-      'login': 'Login',
-      'register': 'Create Account',
-      'username': 'Username',
-      'email': 'Email',
-      'password': 'Password',
-      'confirm_password': 'Confirm Password',
-      'forgot_password': 'Forgot Password?',
-      'remember_me': 'Remember me',
-      'logout': 'Logout',
-      'profile': 'Profile',
-      'account_settings': 'Account Settings',
-      'change_password': 'Change Password',
-      'invalid_credentials': 'Invalid credentials',
-      'registration_success': 'Account created successfully',
-      'weak_password': 'Weak password',
-      'email_already_exists': 'Email already exists',
-      'username_already_exists': 'Username already exists',
-      'welcome_back': 'Welcome Back!',
-      'sign_in_to_continue': 'Sign in to continue',
-      'create_your_account': 'Create Your Account',
-      'fill_details_to_start': 'Fill in the details to get started',
-      'dont_have_account': "Don't have an account?",
-      'already_have_account': 'Already have an account?',
-      'sign_up': 'Sign Up',
-      'password_requirements': 'Password must be at least 8 characters with uppercase, lowercase, and number',
-      'manage_finances': 'Manage your finances easily and securely',
-      'skip': 'Skip',
-      'next': 'Next',
-      'get_started': 'Get Started',
-      'onboarding_cash_management_title': 'Cash Management',
-      'onboarding_cash_management_desc': 'Track your fund box balance, manage transfers, and monitor incoming transactions all in one place.',
-      'onboarding_expenses_title': 'Expense Tracking',
-      'onboarding_expenses_desc': 'Record and categorize your expenses with invoice scanning support for easy documentation.',
-      'onboarding_transfers_title': 'Money Transfers',
-      'onboarding_transfers_desc': 'Send money with automatic currency conversion and exchange rate tracking.',
-      'onboarding_exports_title': 'Export & Reports',
-      'onboarding_exports_desc': 'Generate PDF and Excel reports of your financial data with customizable filters.',
-      'view_tutorial': 'View Tutorial',
-      'syncing': 'Syncing...',
-      'sync_completed': 'Sync completed successfully',
-      'sync_failed': 'Sync failed',
-      'retry_sync': 'Retry Sync',
-      'sync_retry': 'Retry',
-      'sync_all': 'Sync All',
-      'sync_in_progress': 'Sync in progress',
-      'admin_dashboard': 'Admin Dashboard',
-      'statistics': 'Statistics',
-      'total_users': 'Total Users',
-      'total_expenses': 'Total Expenses',
-      'pending_sync': 'Pending Sync',
-      'total_amount': 'Total Amount',
-      'recent_user_expenses': 'Recent User Expenses',
-      'user_activity_summary': 'User Activity Summary',
-      'created_by': 'Created by',
-      'unknown_user': 'Unknown User',
-      'no_expenses_yet': 'No expenses yet',
-      'no_user_activity': 'No user activity',
-      'sync_pending': 'Pending',
-      'sync_syncing': 'Syncing',
-      'sync_synced': 'Synced',
-      'sync_status': 'Sync Status',
-      'all_users': 'All Users',
-      'all_statuses': 'All Statuses',
-      'user': 'User',
-      'filter_by_user': 'Filter by User',
-      'filter_by_recipient': 'Filter by Recipient',
-      'total_syp': 'Total SYP',
-      'must_select_same_user': 'You must select the same user for exchange history and expenses to export the file',
-      'export_exchanges': 'Export Exchanges',
-      'combined_export': 'Combined Export',
-      'export_user_data': 'Export User Data',
-      'please_select_user': 'Please select a user first',
-      'export_error': 'Export Error',
-      'view_invoice': 'View Invoice',
-      'no_invoice_image': 'No invoice image available',
-      'failed_to_load_image': 'Failed to load image',
-      'invoice_image': 'Invoice Image',
-      'unauthorized_access': 'Unauthorized Access',
-      'no_data_available': 'No data available',
-      'retry': 'Retry',
-      'expense_created': 'Expense created successfully',
-      'expense_updated': 'Expense updated successfully',
-      'expense_deleted': 'Expense deleted successfully',
-      'organization': 'Organization',
-      'department': 'Department',
-      'selectOrganization': 'Select Organization',
-      'selectDepartment': 'Select Department',
-      'organizationRequired': 'Please select an organization',
-      'departmentRequired': 'Please select a department',
-      'regularUser': 'Regular User',
-      'adminUser': 'Administrator',
-      'userType': 'User Type',
-      
-      // Admin Group Management
-      'admin_group.group_code': 'Group Code',
-      'admin_group.group_name': 'Group Name',
-      'admin_group.members_count': 'Members',
-      'admin_group.copy_code': 'Copy',
-      'admin_group.copied': 'Copied!',
-      'admin_group.regenerate_code': 'Regenerate',
-      'admin_group.remove_member': 'Remove',
-      'admin_group.join_group': 'Join Group',
-      'admin_group.my_group': 'My Group',
-      'admin_group.group_management': 'Group Management',
-      'admin_group.enter_group_code': 'Enter group code',
-      'admin_group.group_code_hint': '6 characters',
-      'admin_group.get_from_admin': 'Get this code from your admin',
-      'admin_group.share_with_team': 'Share this code with your team members',
-      'admin_group.confirm_remove': 'Are you sure you want to remove this member from the group?',
-      'admin_group.confirm_remove_title': 'Remove Member',
-      'admin_group.confirm_regenerate': 'Regenerating will invalidate the old code. Continue?',
-      'admin_group.joined_at': 'Joined',
-      'admin_group.admin_contact': 'Admin',
-      'admin_group.contact_admin_to_leave': 'Contact your admin to leave the group',
-      'admin_group.admin_badge': 'Admin',
-      'admin_group.cannot_remove_self': 'You cannot remove yourself from the group',
-      'admin_group.search_members': 'Search members...',
-      'admin_group.filter_by_department': 'Filter by Department',
-      'admin_group.all_departments': 'All Departments',
-      'admin_group.no_members_found': 'No members found matching your filters',
-      'admin_group.no_members_yet': 'No members in this group yet',
-      'admin_group.loading_members': 'Loading members...',
-      'admin_group.clear_filters': 'Clear Filters',
-      'admin_group.code_too_short': 'Code must be 6 characters',
-      'admin_group.code_too_long': 'Code must be exactly 6 characters',
-      'admin_group.code_invalid_chars': 'Code must contain only letters and numbers',
-      'admin_group.code_required': 'Group code is required',
-      'admin_group.code_must_be_6': 'Code must be exactly 6 characters',
-      'admin_group.code_requirements': 'Code Requirements:',
-      'admin_group.join_instructions': 'Enter the 6-character group code provided by your admin to join their group.',
-      'admin_group.join_help': 'Don\'t have a code? Contact your admin.',
-      
-      // Success messages
-      'admin_group.code_copied': 'Group code copied to clipboard',
-      'admin_group.member_removed': 'Member removed successfully',
-      'admin_group.code_regenerated': 'Group code regenerated successfully',
-      'admin_group.joined_group': 'Successfully joined the group',
-      
-      // Error messages
-      'admin_group.invalid_code': 'The selected group code is invalid',
-      'admin_group.already_in_group': 'You are already in a group',
-      'admin_group.admin_cannot_join': 'Admins cannot join other groups',
-      'admin_group.member_not_found': 'User not found or not in your group',
-      
-      // Profile Page
-      'member_since': 'Member since',
-      'edit_profile': 'Edit Profile',
-      'edit_profile_title': 'Edit Profile',
-      'profile_picture_updated': 'Profile picture updated successfully',
-      'failed_to_load_profile': 'Failed to load profile',
-      'group_management': 'Group Management',
-      'my_group': 'My Group',
-      'database_management': 'Database Management',
-      'logout_confirm_title': 'Logout',
-      'logout_confirm_message': 'Are you sure you want to logout?',
-      'choose_from_gallery': 'Choose from Gallery',
-      'failed_to_pick_image': 'Failed to pick image',
-      
-      // Profile Statistics
-      'statistics': 'Statistics',
-      'total_expenses_count': 'Total Expenses',
-      'total_transfers_count': 'Total Transfers',
-      'total_incoming_count': 'Total Incoming',
-      'total_exchanges_count': 'Total Exchanges',
-      'total_transactions': 'Total Transactions',
-      'account_age': 'Account Age',
-      'last_activity': 'Last Activity',
-      
-      // Audit Logs
-      'audit_logs': 'Audit Logs',
-      'feature_not_available': 'Feature Not Available',
-      'audit_logs_admin_only': 'Audit logs are only available in the admin version.',
-      'access_denied': 'Access Denied',
-      'admin_privileges_required': 'Admin privileges required to view audit logs.',
-      'no_audit_logs_found': 'No audit logs found',
-      'audit_log_details': 'Audit Log Details',
-      'action': 'Action',
-      'entity_type': 'Entity Type',
-      'entity_id': 'Entity ID',
-      'user_id': 'User ID',
-      'ip_address': 'IP Address',
-      'user_agent': 'User Agent',
-      'changes': 'Changes',
-      'created_at': 'Created At',
-      
-      // Exchange Feature
-      'create_exchange': 'Create Exchange',
-      'select_transfer': 'Select Transfer',
-      'no_transfers_available': 'No transfers available from admin',
-      'transfer_balance': 'Transfer Balance',
-      'original_amount': 'Original',
-      'exchanged': 'Exchanged',
-      'remaining': 'Remaining',
-      'exchange_details': 'Exchange Details',
-      'amount_syp': 'Amount in SYP',
-      'exchange_created_success': 'Exchange created successfully!',
-      'please_select_transfer': 'Please select a transfer first',
-      'amount_exceeds_balance': 'Amount exceeds remaining balance',
-      'no_exchanges_yet': 'No exchanges yet',
-      'create_first_exchange': 'Create your first exchange from a transfer',
-      'exchange_date': 'Exchange Date',
-      'you_will_receive': 'You will receive',
-      'select_date': 'Select Date',
-      'amount_usd_required': 'Amount in USD is required',
-      'exchange_rate_required': 'Exchange rate is required',
-      'notes': 'Notes',
-      'optional': 'Optional',
-      'please_enter_amount': 'Please enter amount',
-      'invalid_amount': 'Invalid amount',
-      'please_enter_rate': 'Please enter exchange rate',
-      'invalid_rate': 'Invalid exchange rate',
-      'recipient': 'Recipient',
-      'rate': 'Rate',
-      'no_data_available': 'No data available',
-      
-      // Admin Group - Additional
-      'admin_group.no_group_found': 'No group found',
-      'admin_group.not_in_group': 'You are not in a group',
-      'admin_group.not_in_group_desc': 'Join a group using a code provided by your admin to access shared financial data.',
-      'admin_group.join_description': 'Enter the group code provided by your admin to join their group and access shared financial data.',
-      'admin_group.help_title': 'Need Help?',
-      'admin_group.help_1': 'The group code is 6 characters long',
-      'admin_group.help_2': 'Get the code from your admin',
-      'admin_group.help_3': 'You can only be in one group at a time',
-      'admin_group.help_4': 'Contact your admin if you need to leave a group',
-      
-      // Export Page
-      'expenses_list_title': 'Expenses List',
-      'sum': 'SUM',
-      'export_error': 'Export error',
-      'no_expenses_to_export': 'No expenses to export',
-      'no_invoices_to_export': 'No invoices to export',
-      
-      // Filters
-      'filter_by_date': 'Filter by Date',
-      'filter_by_user': 'Filter by User',
-      'all_dates': 'All Dates',
-      'all_users': 'All Users',
-      'custom_range': 'Custom Range',
-      'clear_filters': 'Clear Filters',
-      
-      // Database Management
-      'clear_all_data': 'Clear All Data',
-      'clear_all_data_warning': 'This will delete ALL data from the database including:\n\n• All expenses\n• All transfers\n• All incoming transactions\n• All fund box records\n• All exchanges\n\nThis action cannot be undone!',
-      'delete_all_data': 'Delete All Data',
-      'all_data_cleared': '✓ All data cleared successfully',
-      'error_clearing_data': 'Error clearing data',
-      'error_loading_stats': 'Error loading stats',
-      'go_back': 'Go Back',
-      
-      // Common UI
-      'loading': 'Loading...',
-      'error': 'Error',
-      'success': 'Success',
-      'warning': 'Warning',
-      'info': 'Info',
-      'close': 'Close',
-      'ok': 'OK',
-      'confirm': 'Confirm',
-      'back': 'Back',
-      'continue': 'Continue',
-      'submit': 'Submit',
-      'update': 'Update',
-      'refresh': 'Refresh',
-      'filter': 'Filter',
-      'sort': 'Sort',
-      'clear': 'Clear',
-      'apply': 'Apply',
-      'reset': 'Reset',
-      'select': 'Select',
-      'selected': 'Selected',
-      'none': 'None',
-      'other': 'Other',
-      'more': 'More',
-      'less': 'Less',
-      'show_more': 'Show More',
-      'show_less': 'Show Less',
-      'view_all': 'View All',
-      'view_details': 'View Details',
-      'details': 'Details',
-      'settings': 'Settings',
-      
-      // SuperAdmin Expenses Page
-      'filter_by_group': 'Filter by Group',
-      'all_groups': 'All Groups',
-      'grand_total': 'Grand Total',
-      'expense_count': 'Expense Count',
-      'pending': 'Pending',
-      'approved': 'Approved',
-      'rejected': 'Rejected',
-      'error_loading_data': 'Error Loading Data',
-      'no_expenses_found': 'No expenses found',
-      'load_more': 'Load More',
-      'no_description': 'No description',
-      'help': 'Help',
-      'about': 'About',
-      'version': 'Version',
-      'language': 'Language',
-      'theme': 'Theme',
-      'light': 'Light',
-      'dark': 'Dark',
-      'system': 'System',
-      
-      // SuperAdmin Registration
-      'superadmin_registration_success': 'SuperAdmin Registration Successful',
-      'group_code_generated': 'Group Code Generated',
-      'share_with_admins': 'Share this code with your admins to allow them to join your group',
-      'copy_group_code': 'Copy Group Code',
-      
-      // SuperAdmin Cash Page
-      'outgoing_transfers': 'Outgoing Transfers',
-      'create_outgoing_transfer': 'Create Outgoing Transfer',
-      
-      // SuperAdmin Expenses Page
-      'expense_overview': 'Expense Overview',
-      'admin_group_summary': 'Admin Group Summary',
-      'view_group_details': 'View Group Details',
-      'total_expenses': 'Total Expenses',
-      'pending_expenses': 'Pending Expenses',
-      'approved_expenses': 'Approved Expenses',
-      'rejected_expenses': 'Rejected Expenses',
-    },
-    'ar': {
-      'app_title': 'تطبيق المالية',
-      'cash': 'النقد',
-      'convert': 'تصريف',
-      'expenses': 'المصاريف',
-      'export': 'تصدير',
-      'fund_box_usd': 'الصندوق (دولار)',
-      'set_fund_balance': 'تعيين رصيد الصندوق (دولار)',
-      'cancel': 'إلغاء',
-      'save': 'حفظ',
-      'transfer': 'تحويل',
-      'transfers': 'التحويلات',
-      'new_transfer': 'تحويل جديد',
-      'transfer_created': 'تم إنشاء التحويل بنجاح',
-      'transfer_deleted': 'تم حذف التحويل بنجاح',
-      'recipient_name': 'اسم المستلم',
-      'create_outgoing_transfer': 'إنشاء تحويل صادر',
-      'outgoing_transfers': 'التحويلات الصادرة',
-      'no_outgoing_transfers': 'لا توجد تحويلات صادرة بعد',
-      'no_admin_members_available': 'لا يوجد أعضاء مسؤولين متاحين',
-      'fund_box_balance': 'رصيد الصندوق',
-      'please_fill_all_fields': 'يرجى ملء جميع الحقول المطلوبة',
-      'amount_usd': 'المبلغ بالدولار',
-      'converted_amount': 'المبلغ المصرف (دولار ← ليرة سورية)',
-      'exchange_rate': 'سعر الصرف (دولار ← ليرة سورية)',
-      'converted_total_syp': 'الإجمالي المحول (ليرة سورية)',
-      'create': 'إنشاء',
-      'edit_conversion': 'تعديل التحويل',
-      'edit_transfer_conversion': 'تعديل تحويل الحوالة',
-      'refund_delete': 'استرداد وحذف',
-      'delete': 'حذف',
-      'no_syp_recorded': 'لا يوجد ليرة سورية مسجلة',
-      'converted_amount_error': 'لا يمكن أن يتجاوز المبلغ المحول إجمالي مبلغ التحويل',
-      'usd_syp_rate': 'سعر الدولار ← الليرة السورية',
-      'usd': 'دولار',
-      'syp': 'ليرة سورية',
-      'try': 'ليرة تركية',
-      'currency': 'العملة',
-      'all': 'الكل',
-      'add_expense': 'إضافة فاتورة',
-      'new_expense': 'فاتورة جديدة',
-      'edit_expense': 'تعديل الفاتورة',
-      'item_description': 'وصف العنصر *',
-      'expense_date': 'تاريخ الفاتورة',
-      'price_usd': 'السعر بالدولار',
-      'price_syp': 'السعر بالسوري',
-      'price_try': 'السعر بالتركي',
-      'invoice_status': 'حالة الفاتورة',
-      'invoice_available': 'فاتورة متوفرة',
-      'no_invoice_available': 'لا توجد فاتورة',
-      'no_file_selected': 'لم يتم اختيار ملف',
-      'upload': 'رفع',
-      'edit': 'تعديل',
-      'date': 'التاريخ',
-      'today': 'اليوم',
-      'this_week': 'هذا الأسبوع',
-      'this_month': 'هذا الشهر',
-      'custom': 'مخصص',
-      'export_pdf': 'تصدير PDF',
-      'export_excel': 'تصدير Excel',
-      'expenses_list': 'قائمة الفواتير',
-      'description': 'الوصف',
-      'invoice': 'فاتورة',
-      'yes': 'نعم',
-      'no': 'لا',
-      'outgoing': 'الصادر',
-      'incoming': 'الوارد',
-      'add_incoming': 'إضافة وارد',
-      'new_incoming': 'وارد جديد',
-      'edit_incoming': 'تعديل الوارد',
-      'transaction_date': 'تاريخ المعاملة',
-      'search': 'بحث',
-      'search_by_name': 'البحث باسم المستلم',
-      'this_year': 'هذه السنة',
-      'summary': 'المجموع',
-      'total': 'الإجمالي',
-      'take_photo': 'التقاط صورة',
-      'from_gallery': 'من المعرض',
-      'photo_saved': 'تم حفظ الصورة بنجاح',
-      'no_camera': 'لا توجد كاميرا متاحة',
-      'export_cash': 'تصدير النقد',
-      'export_invoices': 'تصدير الفواتير',
-      'add_exchange': 'إضافة صرف',
-      'exchange_history': 'سجل الصرف',
-      'no_exchanges': 'لا يوجد سجل صرف',
-      'cash_transactions': 'معاملات النقد',
-      'invoice_images': 'صور الفواتير',
-      'no_invoice_images': 'لا توجد صور فواتير',
-      'welcome': 'مرحباً',
-      'login': 'تسجيل الدخول',
-      'register': 'إنشاء حساب جديد',
-      'username': 'اسم المستخدم',
-      'email': 'البريد الإلكتروني',
-      'password': 'كلمة المرور',
-      'confirm_password': 'تأكيد كلمة المرور',
-      'forgot_password': 'نسيت كلمة المرور؟',
-      'remember_me': 'تذكرني',
-      'logout': 'تسجيل الخروج',
-      'profile': 'الملف الشخصي',
-      'account_settings': 'إعدادات الحساب',
-      'change_password': 'تغيير كلمة المرور',
-      'invalid_credentials': 'بيانات الدخول غير صحيحة',
-      'registration_success': 'تم إنشاء الحساب بنجاح',
-      'weak_password': 'كلمة المرور ضعيفة',
-      'email_already_exists': 'البريد الإلكتروني مستخدم بالفعل',
-      'username_already_exists': 'اسم المستخدم مستخدم بالفعل',
-      'welcome_back': 'مرحباً بعودتك!',
-      'sign_in_to_continue': 'سجل الدخول للمتابعة',
-      'create_your_account': 'إنشاء حساب جديد',
-      'fill_details_to_start': 'املأ البيانات للبدء',
-      'dont_have_account': 'ليس لديك حساب؟',
-      'already_have_account': 'لديك حساب بالفعل؟',
-      'sign_up': 'إنشاء حساب',
-      'password_requirements': 'يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل، حرف كبير، حرف صغير، ورقم',
-      'manage_finances': 'إدارة أموالك بسهولة وأمان',
-      'skip': 'تخطي',
-      'next': 'التالي',
-      'get_started': 'ابدأ الآن',
-      'onboarding_cash_management_title': 'إدارة النقد',
-      'onboarding_cash_management_desc': 'تتبع رصيد صندوقك، إدارة التحويلات، ومراقبة المعاملات الواردة في مكان واحد.',
-      'onboarding_expenses_title': 'تتبع المصاريف',
-      'onboarding_expenses_desc': 'سجل وصنف مصاريفك مع دعم مسح الفواتير لتوثيق سهل.',
-      'onboarding_transfers_title': 'تحويل الأموال',
-      'onboarding_transfers_desc': 'أرسل الأموال مع تحويل العملات التلقائي وتتبع أسعار الصرف.',
-      'onboarding_exports_title': 'التصدير والتقارير',
-      'onboarding_exports_desc': 'أنشئ تقارير PDF و Excel لبياناتك المالية مع فلاتر قابلة للتخصيص.',
-      'view_tutorial': 'عرض الدليل',
-      'syncing': 'جاري المزامنة...',
-      'sync_completed': 'تمت المزامنة بنجاح',
-      'sync_failed': 'فشلت المزامنة',
-      'retry_sync': 'إعادة المحاولة',
-      'sync_retry': 'إعادة المحاولة',
-      'sync_all': 'مزامنة الكل',
-      'sync_in_progress': 'المزامنة قيد التنفيذ',
-      'admin_dashboard': 'لوحة تحكم المدير',
-      'statistics': 'الإحصائيات',
-      'total_users': 'إجمالي المستخدمين',
-      'total_expenses': 'إجمالي الفواتير',
-      'pending_sync': 'في انتظار المزامنة',
-      'total_amount': 'المبلغ الإجمالي',
-      'recent_user_expenses': 'فواتير المستخدمين الأخيرة',
-      'user_activity_summary': 'ملخص نشاط المستخدمين',
-      'created_by': 'أنشئ بواسطة',
-      'unknown_user': 'مستخدم غير معروف',
-      'no_expenses_yet': 'لا توجد فواتير بعد',
-      'no_user_activity': 'لا يوجد نشاط للمستخدمين',
-      'sync_pending': 'قيد الانتظار',
-      'sync_syncing': 'جاري المزامنة',
-      'sync_synced': 'تمت المزامنة',
-      'sync_status': 'حالة المزامنة',
-      'all_users': 'جميع المستخدمين',
-      'all_statuses': 'جميع الحالات',
-      'user': 'المستخدم',
-      'filter_by_user': 'تصفية حسب المستخدم',
-      'filter_by_recipient': 'تصفية حسب المستلم',
-      'total_syp': 'الإجمالي بالليرة السورية',
-      'must_select_same_user': 'يجب أن تختار نفس المستخدم لسجل الصرافة والمصاريف حتى يتم تصدير الملف',
-      'export_exchanges': 'تصدير الصرافة',
-      'combined_export': 'تصدير مجمع',
-      'export_user_data': 'تصدير بيانات المستخدم',
-      'please_select_user': 'الرجاء اختيار مستخدم أولاً',
-      'export_error': 'خطأ في التصدير',
-      'view_invoice': 'عرض الفاتورة',
-      'no_invoice_image': 'لا توجد صورة فاتورة',
-      'failed_to_load_image': 'فشل تحميل الصورة',
-      'invoice_image': 'صورة الفاتورة',
-      'unauthorized_access': 'وصول غير مصرح به',
-      'no_data_available': 'لا توجد بيانات متاحة',
-      'retry': 'إعادة المحاولة',
-      'expense_created': 'تم إنشاء الفاتورة بنجاح',
-      'expense_updated': 'تم تحديث الفاتورة بنجاح',
-      'expense_deleted': 'تم حذف الفاتورة بنجاح',
-      'organization': 'المنظمة',
-      'department': 'القسم',
-      'selectOrganization': 'اختر المنظمة',
-      'selectDepartment': 'اختر القسم',
-      'organizationRequired': 'الرجاء اختيار المنظمة',
-      'departmentRequired': 'الرجاء اختيار القسم',
-      'regularUser': 'مستخدم عادي',
-      'adminUser': 'مدير',
-      'userType': 'نوع المستخدم',
-      
-      // Admin Group Management
-      'admin_group.group_code': 'رمز المجموعة',
-      'admin_group.group_name': 'اسم المجموعة',
-      'admin_group.members_count': 'الأعضاء',
-      'admin_group.copy_code': 'نسخ',
-      'admin_group.copied': 'تم النسخ!',
-      'admin_group.regenerate_code': 'إعادة إنشاء',
-      'admin_group.remove_member': 'إزالة',
-      'admin_group.join_group': 'الانضمام للمجموعة',
-      'admin_group.my_group': 'مجموعتي',
-      'admin_group.group_management': 'إدارة المجموعة',
-      'admin_group.enter_group_code': 'أدخل رمز المجموعة',
-      'admin_group.group_code_hint': '6 أحرف',
-      'admin_group.get_from_admin': 'احصل على هذا من المسؤول',
-      'admin_group.share_with_team': 'شارك هذا الرمز مع أعضاء فريقك',
-      'admin_group.confirm_remove': 'هل أنت متأكد من إزالة هذا العضو من المجموعة؟',
-      'admin_group.confirm_remove_title': 'إزالة عضو',
-      'admin_group.confirm_regenerate': 'إعادة الإنشاء ستلغي الرمز القديم. هل تريد المتابعة؟',
-      'admin_group.joined_at': 'انضم في',
-      'admin_group.admin_contact': 'المسؤول',
-      'admin_group.contact_admin_to_leave': 'اتصل بالمسؤول لمغادرة المجموعة',
-      'admin_group.admin_badge': 'مدير',
-      'admin_group.cannot_remove_self': 'لا يمكنك إزالة نفسك من المجموعة',
-      'admin_group.search_members': 'البحث عن الأعضاء...',
-      'admin_group.filter_by_department': 'تصفية حسب القسم',
-      'admin_group.all_departments': 'جميع الأقسام',
-      'admin_group.no_members_found': 'لم يتم العثور على أعضاء مطابقين للفلاتر',
-      'admin_group.no_members_yet': 'لا يوجد أعضاء في هذه المجموعة بعد',
-      'admin_group.loading_members': 'جاري تحميل الأعضاء...',
-      'admin_group.clear_filters': 'مسح الفلاتر',
-      'admin_group.code_too_short': 'يجب أن يكون الرمز 6 أحرف',
-      'admin_group.code_too_long': 'يجب أن يكون الرمز 6 أحرف بالضبط',
-      'admin_group.code_invalid_chars': 'يجب أن يحتوي الرمز على أحرف وأرقام فقط',
-      'admin_group.code_required': 'رمز المجموعة مطلوب',
-      'admin_group.code_must_be_6': 'يجب أن يكون الرمز 6 أحرف بالضبط',
-      'admin_group.code_requirements': 'متطلبات الرمز:',
-      'admin_group.join_instructions': 'أدخل رمز المجموعة المكون من 6 أحرف المقدم من المسؤول للانضمام إلى مجموعته.',
-      'admin_group.join_help': 'ليس لديك رمز؟ اتصل بالمسؤول.',
-      
-      // Success messages
-      'admin_group.code_copied': 'تم نسخ رمز المجموعة',
-      'admin_group.member_removed': 'تمت إزالة العضو بنجاح',
-      'admin_group.code_regenerated': 'تم إعادة إنشاء رمز المجموعة بنجاح',
-      'admin_group.joined_group': 'تم الانضمام للمجموعة بنجاح',
-      
-      // Error messages
-      'admin_group.invalid_code': 'رمز المجموعة المحدد غير صالح',
-      'admin_group.already_in_group': 'أنت بالفعل في مجموعة',
-      'admin_group.admin_cannot_join': 'لا يمكن للمسؤولين الانضمام لمجموعات أخرى',
-      'admin_group.member_not_found': 'المستخدم غير موجود أو ليس في مجموعتك',
-      
-      // Profile Page
-      'member_since': 'عضو منذ',
-      'edit_profile': 'تعديل الملف الشخصي',
-      'edit_profile_title': 'تعديل الملف الشخصي',
-      'profile_picture_updated': 'تم تحديث صورة الملف الشخصي بنجاح',
-      'failed_to_load_profile': 'فشل تحميل الملف الشخصي',
-      'group_management': 'إدارة المجموعة',
-      'my_group': 'مجموعتي',
-      'database_management': 'إدارة قاعدة البيانات',
-      'logout_confirm_title': 'تسجيل الخروج',
-      'logout_confirm_message': 'هل أنت متأكد من تسجيل الخروج؟',
-      'choose_from_gallery': 'اختر من المعرض',
-      'failed_to_pick_image': 'فشل اختيار الصورة',
-      
-      // Profile Statistics
-      'statistics': 'الإحصائيات',
-      'total_expenses_count': 'إجمالي الفواتير',
-      'total_transfers_count': 'إجمالي التحويلات',
-      'total_incoming_count': 'إجمالي الوارد',
-      'total_exchanges_count': 'إجمالي الصرف',
-      'total_transactions': 'إجمالي المعاملات',
-      'account_age': 'عمر الحساب',
-      'last_activity': 'آخر نشاط',
-      
-      // Audit Logs
-      'audit_logs': 'سجلات التدقيق',
-      'feature_not_available': 'الميزة غير متاحة',
-      'audit_logs_admin_only': 'سجلات التدقيق متاحة فقط في نسخة المدير.',
-      'access_denied': 'تم رفض الوصول',
-      'admin_privileges_required': 'مطلوب صلاحيات المدير لعرض سجلات التدقيق.',
-      'no_audit_logs_found': 'لم يتم العثور على سجلات تدقيق',
-      'audit_log_details': 'تفاصيل سجل التدقيق',
-      'action': 'الإجراء',
-      'entity_type': 'نوع الكيان',
-      'entity_id': 'معرف الكيان',
-      'user_id': 'معرف المستخدم',
-      'ip_address': 'عنوان IP',
-      'user_agent': 'وكيل المستخدم',
-      'changes': 'التغييرات',
-      'created_at': 'تم الإنشاء في',
-      
-      // Exchange Feature
-      'create_exchange': 'إنشاء صرف',
-      'select_transfer': 'اختر التحويل',
-      'no_transfers_available': 'لا توجد تحويلات متاحة من المدير',
-      'transfer_balance': 'رصيد التحويل',
-      'original_amount': 'الأصلي',
-      'exchanged': 'المصروف',
-      'remaining': 'المتبقي',
-      'exchange_details': 'تفاصيل الصرف',
-      'amount_syp': 'المبلغ بالليرة السورية',
-      'exchange_created_success': 'تم إنشاء الصرف بنجاح!',
-      'please_select_transfer': 'الرجاء اختيار تحويل أولاً',
-      'amount_exceeds_balance': 'المبلغ يتجاوز الرصيد المتبقي',
-      'no_exchanges_yet': 'لا يوجد صرف بعد',
-      'create_first_exchange': 'أنشئ أول صرف من تحويل',
-      'exchange_date': 'تاريخ الصرف',
-      'you_will_receive': 'سوف تستلم',
-      'select_date': 'اختر التاريخ',
-      'amount_usd_required': 'المبلغ بالدولار مطلوب',
-      'exchange_rate_required': 'سعر الصرف مطلوب',
-      'notes': 'ملاحظات',
-      'optional': 'اختياري',
-      'please_enter_amount': 'الرجاء إدخال المبلغ',
-      'invalid_amount': 'مبلغ غير صالح',
-      'please_enter_rate': 'الرجاء إدخال سعر الصرف',
-      'invalid_rate': 'سعر صرف غير صالح',
-      'recipient': 'المستلم',
-      'rate': 'السعر',
-      'no_data_available': 'لا توجد بيانات متاحة',
-      
-      // Admin Group - Additional
-      'admin_group.no_group_found': 'لم يتم العثور على مجموعة',
-      'admin_group.not_in_group': 'أنت لست في مجموعة',
-      'admin_group.not_in_group_desc': 'انضم إلى مجموعة باستخدام رمز مقدم من المسؤول للوصول إلى البيانات المالية المشتركة.',
-      'admin_group.join_description': 'أدخل رمز المجموعة المقدم من المسؤول للانضمام إلى مجموعته والوصول إلى البيانات المالية المشتركة.',
-      'admin_group.help_title': 'تحتاج مساعدة؟',
-      'admin_group.help_1': 'رمز المجموعة يتكون من 6 أحرف',
-      'admin_group.help_2': 'احصل على الرمز من المسؤول',
-      'admin_group.help_3': 'يمكنك أن تكون في مجموعة واحدة فقط في وقت واحد',
-      'admin_group.help_4': 'اتصل بالمسؤول إذا كنت بحاجة لمغادرة المجموعة',
-      
-      // Export Page
-      'expenses_list_title': 'قائمة الفواتير',
-      'sum': 'المجموع',
-      'export_error': 'خطأ في التصدير',
-      'no_expenses_to_export': 'لا توجد فواتير للتصدير',
-      'no_invoices_to_export': 'لا توجد فواتير للتصدير',
-      
-      // Filters
-      'filter_by_date': 'تصفية حسب التاريخ',
-      'filter_by_user': 'تصفية حسب المستخدم',
-      'all_dates': 'كل التواريخ',
-      'all_users': 'كل المستخدمين',
-      'custom_range': 'نطاق مخصص',
-      'clear_filters': 'مسح التصفية',
-      
-      // Database Management
-      'clear_all_data': 'مسح جميع البيانات',
-      'clear_all_data_warning': 'سيؤدي هذا إلى حذف جميع البيانات من قاعدة البيانات بما في ذلك:\n\n• جميع الفواتير\n• جميع التحويلات\n• جميع المعاملات الواردة\n• جميع سجلات الصندوق\n• جميع عمليات الصرف\n\nلا يمكن التراجع عن هذا الإجراء!',
-      'delete_all_data': 'حذف جميع البيانات',
-      'all_data_cleared': '✓ تم مسح جميع البيانات بنجاح',
-      'error_clearing_data': 'خطأ في مسح البيانات',
-      'error_loading_stats': 'خطأ في تحميل الإحصائيات',
-      'go_back': 'رجوع',
-      
-      // Common UI
-      'loading': 'جاري التحميل...',
-      'error': 'خطأ',
-      'success': 'نجح',
-      'warning': 'تحذير',
-      'info': 'معلومات',
-      'close': 'إغلاق',
-      'ok': 'موافق',
-      'confirm': 'تأكيد',
-      'back': 'رجوع',
-      'continue': 'متابعة',
-      'submit': 'إرسال',
-      'update': 'تحديث',
-      'refresh': 'تحديث',
-      'filter': 'تصفية',
-      'sort': 'ترتيب',
-      'clear': 'مسح',
-      'apply': 'تطبيق',
-      'reset': 'إعادة تعيين',
-      'select': 'اختر',
-      'selected': 'محدد',
-      'none': 'لا شيء',
-      'other': 'آخر',
-      'more': 'المزيد',
-      'less': 'أقل',
-      'show_more': 'عرض المزيد',
-      'show_less': 'عرض أقل',
-      'view_all': 'عرض الكل',
-      'view_details': 'عرض التفاصيل',
-      'details': 'التفاصيل',
-      'settings': 'الإعدادات',
-      
-      // SuperAdmin Expenses Page
-      'filter_by_group': 'تصفية حسب المجموعة',
-      'all_groups': 'جميع المجموعات',
-      'grand_total': 'الإجمالي الكلي',
-      'expense_count': 'عدد الفواتير',
-      'pending': 'قيد الانتظار',
-      'approved': 'موافق عليها',
-      'rejected': 'مرفوضة',
-      'error_loading_data': 'خطأ في تحميل البيانات',
-      'no_expenses_found': 'لم يتم العثور على فواتير',
-      'load_more': 'تحميل المزيد',
-      'no_description': 'لا يوجد وصف',
-      'help': 'مساعدة',
-      'about': 'حول',
-      'version': 'الإصدار',
-      'language': 'اللغة',
-      'theme': 'المظهر',
-      'light': 'فاتح',
-      'dark': 'داكن',
-      'system': 'النظام',
-      
-      // SuperAdmin Registration
-      'superadmin_registration_success': 'تم تسجيل المدير الأعلى بنجاح',
-      'group_code_generated': 'تم إنشاء رمز المجموعة',
-      'share_with_admins': 'شارك هذا الرمز مع المسؤولين للسماح لهم بالانضمام إلى مجموعتك',
-      'copy_group_code': 'نسخ رمز المجموعة',
-      
-      // SuperAdmin Cash Page
-      'outgoing_transfers': 'التحويلات الصادرة',
-      'create_outgoing_transfer': 'إنشاء تحويل صادر',
-      
-      // SuperAdmin Expenses Page
-      'expense_overview': 'نظرة عامة على الفواتير',
-      'admin_group_summary': 'ملخص مجموعة المسؤولين',
-      'view_group_details': 'عرض تفاصيل المجموعة',
-      'total_expenses': 'إجمالي الفواتير',
-      'pending_expenses': 'الفواتير قيد الانتظار',
-      'approved_expenses': 'الفواتير الموافق عليها',
-      'rejected_expenses': 'الفواتير المرفوضة',
-    },
-  };
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
-  String translate(String key) {
-    return _localizedValues[locale.languageCode]?[key] ?? key;
-  }
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('ar'),
+    Locale('en'),
+  ];
 
-  // Authentication getters
-  String? get welcome => translate('welcome');
-  String? get login => translate('login');
-  String? get register => translate('register');
-  String? get username => translate('username');
-  String? get email => translate('email');
-  String? get password => translate('password');
-  String? get confirmPassword => translate('confirm_password');
-  String? get forgotPassword => translate('forgot_password');
-  String? get rememberMe => translate('remember_me');
-  String? get logout => translate('logout');
-  String? get profile => translate('profile');
-  String? get accountSettings => translate('account_settings');
-  String? get changePassword => translate('change_password');
-  
-  // Authentication error messages
-  String? get invalidCredentials => translate('invalid_credentials');
-  String? get registrationSuccess => translate('registration_success');
-  String? get weakPassword => translate('weak_password');
-  String? get emailAlreadyExists => translate('email_already_exists');
-  String? get usernameAlreadyExists => translate('username_already_exists');
-  
-  // Authentication UI messages
-  String? get welcomeBack => translate('welcome_back');
-  String? get signInToContinue => translate('sign_in_to_continue');
-  String? get createYourAccount => translate('create_your_account');
-  String? get fillDetailsToStart => translate('fill_details_to_start');
-  String? get dontHaveAccount => translate('dont_have_account');
-  String? get alreadyHaveAccount => translate('already_have_account');
-  String? get signUp => translate('sign_up');
-  String? get passwordRequirements => translate('password_requirements');
-  String? get manageFinances => translate('manage_finances');
-  
-  // Onboarding getters
-  String? get skip => translate('skip');
-  String? get next => translate('next');
-  String? get getStarted => translate('get_started');
-  String? get onboardingCashManagementTitle => translate('onboarding_cash_management_title');
-  String? get onboardingCashManagementDesc => translate('onboarding_cash_management_desc');
-  String? get onboardingExpensesTitle => translate('onboarding_expenses_title');
-  String? get onboardingExpensesDesc => translate('onboarding_expenses_desc');
-  String? get onboardingTransfersTitle => translate('onboarding_transfers_title');
-  String? get onboardingTransfersDesc => translate('onboarding_transfers_desc');
-  String? get onboardingExportsTitle => translate('onboarding_exports_title');
-  String? get onboardingExportsDesc => translate('onboarding_exports_desc');
-  String? get viewTutorial => translate('view_tutorial');
-  
-  // Organizational hierarchy getters
-  String? get organization => translate('organization');
-  String? get department => translate('department');
-  String? get selectOrganization => translate('selectOrganization');
-  String? get selectDepartment => translate('selectDepartment');
-  String? get organizationRequired => translate('organizationRequired');
-  String? get departmentRequired => translate('departmentRequired');
-  String? get regularUser => translate('regularUser');
-  String? get adminUser => translate('adminUser');
-  String? get userType => translate('userType');
-  
-  // Admin Group Management getters
-  String? get adminGroupCode => translate('admin_group.group_code');
-  String? get adminGroupName => translate('admin_group.group_name');
-  String? get adminGroupMembersCount => translate('admin_group.members_count');
-  String? get adminGroupCopyCode => translate('admin_group.copy_code');
-  String? get adminGroupCopied => translate('admin_group.copied');
-  String? get adminGroupRegenerateCode => translate('admin_group.regenerate_code');
-  String? get adminGroupRemoveMember => translate('admin_group.remove_member');
-  String? get adminGroupJoinGroup => translate('admin_group.join_group');
-  String? get adminGroupMyGroup => translate('admin_group.my_group');
-  String? get adminGroupManagement => translate('admin_group.group_management');
-  String? get adminGroupEnterCode => translate('admin_group.enter_group_code');
-  String? get adminGroupCodeHint => translate('admin_group.group_code_hint');
-  String? get adminGroupGetFromAdmin => translate('admin_group.get_from_admin');
-  String? get adminGroupShareWithTeam => translate('admin_group.share_with_team');
-  String? get adminGroupConfirmRemove => translate('admin_group.confirm_remove');
-  String? get adminGroupConfirmRemoveTitle => translate('admin_group.confirm_remove_title');
-  String? get adminGroupConfirmRegenerate => translate('admin_group.confirm_regenerate');
-  String? get adminGroupJoinedAt => translate('admin_group.joined_at');
-  String? get adminGroupAdminContact => translate('admin_group.admin_contact');
-  String? get adminGroupContactAdminToLeave => translate('admin_group.contact_admin_to_leave');
-  String? get adminGroupAdminBadge => translate('admin_group.admin_badge');
-  String? get adminGroupCannotRemoveSelf => translate('admin_group.cannot_remove_self');
-  String? get adminGroupSearchMembers => translate('admin_group.search_members');
-  String? get adminGroupFilterByDepartment => translate('admin_group.filter_by_department');
-  String? get adminGroupAllDepartments => translate('admin_group.all_departments');
-  String? get adminGroupNoMembersFound => translate('admin_group.no_members_found');
-  String? get adminGroupNoMembersYet => translate('admin_group.no_members_yet');
-  String? get adminGroupLoadingMembers => translate('admin_group.loading_members');
-  String? get adminGroupClearFilters => translate('admin_group.clear_filters');
-  String? get adminGroupCodeTooShort => translate('admin_group.code_too_short');
-  String? get adminGroupCodeTooLong => translate('admin_group.code_too_long');
-  String? get adminGroupCodeInvalidChars => translate('admin_group.code_invalid_chars');
-  String? get adminGroupCodeRequired => translate('admin_group.code_required');
-  String? get adminGroupCodeMustBe6 => translate('admin_group.code_must_be_6');
-  String? get adminGroupCodeRequirements => translate('admin_group.code_requirements');
-  String? get adminGroupJoinInstructions => translate('admin_group.join_instructions');
-  String? get adminGroupJoinHelp => translate('admin_group.join_help');
-  
-  // Admin Group success messages
-  String? get adminGroupCodeCopied => translate('admin_group.code_copied');
-  String? get adminGroupMemberRemoved => translate('admin_group.member_removed');
-  String? get adminGroupCodeRegenerated => translate('admin_group.code_regenerated');
-  String? get adminGroupJoinedGroup => translate('admin_group.joined_group');
-  
-  // Admin Group error messages
-  String? get adminGroupInvalidCode => translate('admin_group.invalid_code');
-  String? get adminGroupAlreadyInGroup => translate('admin_group.already_in_group');
-  String? get adminGroupAdminCannotJoin => translate('admin_group.admin_cannot_join');
-  String? get adminGroupMemberNotFound => translate('admin_group.member_not_found');
-  
-  // Profile Page getters
-  String? get memberSince => translate('member_since');
-  String? get editProfile => translate('edit_profile');
-  String? get editProfileTitle => translate('edit_profile_title');
-  String? get profilePictureUpdated => translate('profile_picture_updated');
-  String? get failedToLoadProfile => translate('failed_to_load_profile');
-  String? get groupManagement => translate('group_management');
-  String? get myGroup => translate('my_group');
-  String? get databaseManagement => translate('database_management');
-  String? get logoutConfirmTitle => translate('logout_confirm_title');
-  String? get logoutConfirmMessage => translate('logout_confirm_message');
-  String? get chooseFromGallery => translate('choose_from_gallery');
-  String? get failedToPickImage => translate('failed_to_pick_image');
-  
-  // Profile Statistics getters
-  String? get statistics => translate('statistics');
-  String? get totalExpensesCount => translate('total_expenses_count');
-  String? get totalTransfersCount => translate('total_transfers_count');
-  String? get totalIncomingCount => translate('total_incoming_count');
-  String? get totalExchangesCount => translate('total_exchanges_count');
-  
-  // Audit Logs getters
-  String? get auditLogs => translate('audit_logs');
-  String? get featureNotAvailable => translate('feature_not_available');
-  String? get auditLogsAdminOnly => translate('audit_logs_admin_only');
-  String? get accessDenied => translate('access_denied');
-  String? get adminPrivilegesRequired => translate('admin_privileges_required');
-  String? get noAuditLogsFound => translate('no_audit_logs_found');
-  String? get auditLogDetails => translate('audit_log_details');
-  String? get action => translate('action');
-  String? get entityType => translate('entity_type');
-  String? get entityId => translate('entity_id');
-  String? get userId => translate('user_id');
-  String? get ipAddress => translate('ip_address');
-  String? get userAgent => translate('user_agent');
-  String? get changes => translate('changes');
-  String? get createdAt => translate('created_at');
-  
-  // Exchange Feature getters
-  String? get createExchange => translate('create_exchange');
-  String? get selectTransfer => translate('select_transfer');
-  String? get noTransfersAvailable => translate('no_transfers_available');
-  String? get transferBalance => translate('transfer_balance');
-  String? get originalAmount => translate('original_amount');
-  String? get exchanged => translate('exchanged');
-  String? get remaining => translate('remaining');
-  String? get exchangeDetails => translate('exchange_details');
-  String? get amountSyp => translate('amount_syp');
-  String? get exchangeCreatedSuccess => translate('exchange_created_success');
-  String? get pleaseSelectTransfer => translate('please_select_transfer');
-  String? get amountExceedsBalance => translate('amount_exceeds_balance');
-  String? get noExchangesYet => translate('no_exchanges_yet');
-  String? get createFirstExchange => translate('create_first_exchange');
-  String? get exchangeDate => translate('exchange_date');
-  String? get youWillReceive => translate('you_will_receive');
-  String? get selectDate => translate('select_date');
-  String? get amountUsdRequired => translate('amount_usd_required');
-  String? get exchangeRateRequired => translate('exchange_rate_required');
-  String? get notes => translate('notes');
-  String? get optional => translate('optional');
-  
-  // Export Page getters
-  String? get expensesListTitle => translate('expenses_list_title');
-  String? get sum => translate('sum');
-  String? get exportError => translate('export_error');
-  
-  // Common UI getters
-  String? get loading => translate('loading');
-  String? get error => translate('error');
-  String? get success => translate('success');
-  String? get warning => translate('warning');
-  String? get info => translate('info');
-  String? get close => translate('close');
-  String? get ok => translate('ok');
-  String? get confirm => translate('confirm');
-  String? get back => translate('back');
-  String? get continueText => translate('continue');
-  String? get submit => translate('submit');
-  String? get update => translate('update');
-  String? get refresh => translate('refresh');
-  String? get filter => translate('filter');
-  String? get sort => translate('sort');
-  String? get clear => translate('clear');
-  String? get apply => translate('apply');
-  String? get reset => translate('reset');
-  String? get select => translate('select');
-  String? get selected => translate('selected');
-  String? get none => translate('none');
-  String? get other => translate('other');
-  String? get more => translate('more');
-  String? get less => translate('less');
-  String? get showMore => translate('show_more');
-  String? get showLess => translate('show_less');
-  String? get viewAll => translate('view_all');
-  String? get viewDetails => translate('view_details');
-  String? get details => translate('details');
-  String? get settings => translate('settings');
-  String? get help => translate('help');
-  String? get about => translate('about');
-  String? get version => translate('version');
-  String? get language => translate('language');
-  String? get theme => translate('theme');
-  String? get light => translate('light');
-  String? get dark => translate('dark');
-  String? get system => translate('system');
-  
-  // SuperAdmin Registration getters
-  String? get superadminRegistrationSuccess => translate('superadmin_registration_success');
-  String? get groupCodeGenerated => translate('group_code_generated');
-  String? get shareWithAdmins => translate('share_with_admins');
-  String? get copyGroupCode => translate('copy_group_code');
-  
-  // SuperAdmin Cash Page getters
-  String? get outgoingTransfers => translate('outgoing_transfers');
-  String? get createOutgoingTransfer => translate('create_outgoing_transfer');
-  
-  // SuperAdmin Expenses Page getters
-  String? get expenseOverview => translate('expense_overview');
-  String? get adminGroupSummary => translate('admin_group_summary');
-  String? get viewGroupDetails => translate('view_group_details');
-  String? get totalExpenses => translate('total_expenses');
-  String? get pendingExpenses => translate('pending_expenses');
-  String? get approvedExpenses => translate('approved_expenses');
-  String? get rejectedExpenses => translate('rejected_expenses');
+  /// The title of the application
+  ///
+  /// In en, this message translates to:
+  /// **'Finance App'**
+  String get appTitle;
+
+  /// No description provided for @cash.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash'**
+  String get cash;
+
+  /// No description provided for @cash_inbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash-Inbox'**
+  String get cash_inbox;
+
+  /// No description provided for @cashInbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash-Inbox'**
+  String get cashInbox;
+
+  /// No description provided for @transfer_to_admin.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer to Admin'**
+  String get transfer_to_admin;
+
+  /// No description provided for @select_admin.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Admin'**
+  String get select_admin;
+
+  /// No description provided for @no_admins_available.
+  ///
+  /// In en, this message translates to:
+  /// **'No admins available'**
+  String get no_admins_available;
+
+  /// No description provided for @export_success.
+  ///
+  /// In en, this message translates to:
+  /// **'Export successful'**
+  String get export_success;
+
+  /// No description provided for @convert.
+  ///
+  /// In en, this message translates to:
+  /// **'Convert'**
+  String get convert;
+
+  /// No description provided for @expenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses'**
+  String get expenses;
+
+  /// No description provided for @export.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get export;
+
+  /// No description provided for @fundBoxUsd.
+  ///
+  /// In en, this message translates to:
+  /// **'Fund Box (USD)'**
+  String get fundBoxUsd;
+
+  /// No description provided for @setFundBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Fund Balance (USD)'**
+  String get setFundBalance;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @transfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer'**
+  String get transfer;
+
+  /// No description provided for @transfers.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfers'**
+  String get transfers;
+
+  /// No description provided for @newTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'New Transfer'**
+  String get newTransfer;
+
+  /// No description provided for @transferCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer created successfully'**
+  String get transferCreated;
+
+  /// No description provided for @transferDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer deleted successfully'**
+  String get transferDeleted;
+
+  /// No description provided for @recipientName.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipient name'**
+  String get recipientName;
+
+  /// No description provided for @selectRecipient.
+  ///
+  /// In en, this message translates to:
+  /// **'Select recipient'**
+  String get selectRecipient;
+
+  /// No description provided for @createOutgoingTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Outgoing Transfer'**
+  String get createOutgoingTransfer;
+
+  /// No description provided for @outgoingTransfers.
+  ///
+  /// In en, this message translates to:
+  /// **'Outgoing Transfers'**
+  String get outgoingTransfers;
+
+  /// No description provided for @noOutgoingTransfers.
+  ///
+  /// In en, this message translates to:
+  /// **'No outgoing transfers yet'**
+  String get noOutgoingTransfers;
+
+  /// No description provided for @noAdminMembersAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No admin members available'**
+  String get noAdminMembersAvailable;
+
+  /// No description provided for @fundBoxBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Fund Box Balance'**
+  String get fundBoxBalance;
+
+  /// No description provided for @loadingBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading balance...'**
+  String get loadingBalance;
+
+  /// No description provided for @pleaseFillAllFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Please fill all required fields'**
+  String get pleaseFillAllFields;
+
+  /// No description provided for @amountUsd.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount USD'**
+  String get amountUsd;
+
+  /// No description provided for @convertedAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Converted Amount (USD → SYP)'**
+  String get convertedAmount;
+
+  /// No description provided for @exchangeRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Exchange Rate (USD → SYP)'**
+  String get exchangeRate;
+
+  /// No description provided for @convertedTotalSyp.
+  ///
+  /// In en, this message translates to:
+  /// **'Converted Total (SYP)'**
+  String get convertedTotalSyp;
+
+  /// No description provided for @create.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get create;
+
+  /// No description provided for @editConversion.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit conversion'**
+  String get editConversion;
+
+  /// No description provided for @editTransferConversion.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Transfer Conversion'**
+  String get editTransferConversion;
+
+  /// No description provided for @refundDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund and delete'**
+  String get refundDelete;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @noSypRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'No SYP recorded'**
+  String get noSypRecorded;
+
+  /// No description provided for @convertedAmountError.
+  ///
+  /// In en, this message translates to:
+  /// **'Converted amount cannot exceed total transfer amount'**
+  String get convertedAmountError;
+
+  /// No description provided for @usdSypRate.
+  ///
+  /// In en, this message translates to:
+  /// **'USD → SYP rate'**
+  String get usdSypRate;
+
+  /// No description provided for @usd.
+  ///
+  /// In en, this message translates to:
+  /// **'USD'**
+  String get usd;
+
+  /// No description provided for @syp.
+  ///
+  /// In en, this message translates to:
+  /// **'SYP'**
+  String get syp;
+
+  /// No description provided for @currencyTry.
+  ///
+  /// In en, this message translates to:
+  /// **'TRY'**
+  String get currencyTry;
+
+  /// No description provided for @currency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get currency;
+
+  /// No description provided for @all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get all;
+
+  /// No description provided for @addExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Add expense'**
+  String get addExpense;
+
+  /// No description provided for @newExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'New Expense'**
+  String get newExpense;
+
+  /// No description provided for @editExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Expense'**
+  String get editExpense;
+
+  /// No description provided for @itemDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Item description *'**
+  String get itemDescription;
+
+  /// No description provided for @expenseDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense Date'**
+  String get expenseDate;
+
+  /// No description provided for @priceUsd.
+  ///
+  /// In en, this message translates to:
+  /// **'Price USD'**
+  String get priceUsd;
+
+  /// No description provided for @priceSyp.
+  ///
+  /// In en, this message translates to:
+  /// **'Price SYP'**
+  String get priceSyp;
+
+  /// No description provided for @priceTry.
+  ///
+  /// In en, this message translates to:
+  /// **'Price TRY'**
+  String get priceTry;
+
+  /// No description provided for @invoiceStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice status'**
+  String get invoiceStatus;
+
+  /// No description provided for @invoiceAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice available'**
+  String get invoiceAvailable;
+
+  /// No description provided for @noInvoiceAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No invoice available'**
+  String get noInvoiceAvailable;
+
+  /// No description provided for @noFileSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No file selected'**
+  String get noFileSelected;
+
+  /// No description provided for @upload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get upload;
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// No description provided for @date.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get date;
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
+
+  /// No description provided for @thisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'This Week'**
+  String get thisWeek;
+
+  /// No description provided for @thisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This Month'**
+  String get thisMonth;
+
+  /// No description provided for @custom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get custom;
+
+  /// No description provided for @exportPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Export PDF'**
+  String get exportPdf;
+
+  /// No description provided for @exportExcel.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Excel'**
+  String get exportExcel;
+
+  /// No description provided for @expensesList.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses List'**
+  String get expensesList;
+
+  /// No description provided for @description.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get description;
+
+  /// No description provided for @invoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice'**
+  String get invoice;
+
+  /// No description provided for @yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yes;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
+  /// No description provided for @outgoing.
+  ///
+  /// In en, this message translates to:
+  /// **'Outgoing'**
+  String get outgoing;
+
+  /// No description provided for @incoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming'**
+  String get incoming;
+
+  /// No description provided for @addIncoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Incoming'**
+  String get addIncoming;
+
+  /// No description provided for @newIncoming.
+  ///
+  /// In en, this message translates to:
+  /// **'New Incoming'**
+  String get newIncoming;
+
+  /// No description provided for @editIncoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Incoming'**
+  String get editIncoming;
+
+  /// No description provided for @transactionDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction Date'**
+  String get transactionDate;
+
+  /// No description provided for @search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get search;
+
+  /// No description provided for @searchByName.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by recipient name'**
+  String get searchByName;
+
+  /// No description provided for @thisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'This Year'**
+  String get thisYear;
+
+  /// No description provided for @summary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get summary;
+
+  /// No description provided for @total.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get total;
+
+  /// No description provided for @totalUsd.
+  ///
+  /// In en, this message translates to:
+  /// **'Total USD'**
+  String get totalUsd;
+
+  /// No description provided for @totalSyp.
+  ///
+  /// In en, this message translates to:
+  /// **'Total SYP'**
+  String get totalSyp;
+
+  /// No description provided for @totalTry.
+  ///
+  /// In en, this message translates to:
+  /// **'Total TRY'**
+  String get totalTry;
+
+  /// No description provided for @takePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take Photo'**
+  String get takePhoto;
+
+  /// No description provided for @fromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'From Gallery'**
+  String get fromGallery;
+
+  /// No description provided for @photoSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo saved successfully'**
+  String get photoSaved;
+
+  /// No description provided for @noCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'No camera available'**
+  String get noCamera;
+
+  /// No description provided for @exportCash.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Cash'**
+  String get exportCash;
+
+  /// No description provided for @exportInvoices.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Invoices'**
+  String get exportInvoices;
+
+  /// No description provided for @addExchange.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Exchange'**
+  String get addExchange;
+
+  /// No description provided for @exchangeHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Exchange History'**
+  String get exchangeHistory;
+
+  /// No description provided for @noExchanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No exchange history'**
+  String get noExchanges;
+
+  /// No description provided for @cashTransactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash Transactions'**
+  String get cashTransactions;
+
+  /// No description provided for @invoiceImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice Images'**
+  String get invoiceImages;
+
+  /// No description provided for @noInvoiceImages.
+  ///
+  /// In en, this message translates to:
+  /// **'No invoice images found'**
+  String get noInvoiceImages;
+
+  /// No description provided for @welcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome'**
+  String get welcome;
+
+  /// No description provided for @login.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get login;
+
+  /// No description provided for @register.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Account'**
+  String get register;
+
+  /// No description provided for @username.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get username;
+
+  /// No description provided for @email.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get email;
+
+  /// No description provided for @password.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get password;
+
+  /// No description provided for @confirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get confirmPassword;
+
+  /// No description provided for @forgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot Password?'**
+  String get forgotPassword;
+
+  /// No description provided for @rememberMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember me'**
+  String get rememberMe;
+
+  /// No description provided for @logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get logout;
+
+  /// No description provided for @profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profile;
+
+  /// No description provided for @accountSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Account Settings'**
+  String get accountSettings;
+
+  /// No description provided for @changePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Password'**
+  String get changePassword;
+
+  /// No description provided for @invalidCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid credentials'**
+  String get invalidCredentials;
+
+  /// No description provided for @registrationSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Account created successfully'**
+  String get registrationSuccess;
+
+  /// No description provided for @weakPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Weak password'**
+  String get weakPassword;
+
+  /// No description provided for @emailAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Email already exists'**
+  String get emailAlreadyExists;
+
+  /// No description provided for @usernameAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Username already exists'**
+  String get usernameAlreadyExists;
+
+  /// No description provided for @welcomeBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome Back!'**
+  String get welcomeBack;
+
+  /// No description provided for @signInToContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to continue'**
+  String get signInToContinue;
+
+  /// No description provided for @createYourAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Your Account'**
+  String get createYourAccount;
+
+  /// No description provided for @fillDetailsToStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in the details to get started'**
+  String get fillDetailsToStart;
+
+  /// No description provided for @dontHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account?'**
+  String get dontHaveAccount;
+
+  /// No description provided for @alreadyHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account?'**
+  String get alreadyHaveAccount;
+
+  /// No description provided for @signUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Up'**
+  String get signUp;
+
+  /// No description provided for @passwordRequirements.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 8 characters with uppercase, lowercase, and number'**
+  String get passwordRequirements;
+
+  /// No description provided for @manageFinances.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your finances easily and securely'**
+  String get manageFinances;
+
+  /// No description provided for @skip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get skip;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @getStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Started'**
+  String get getStarted;
+
+  /// No description provided for @onboardingCashManagementTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash Management'**
+  String get onboardingCashManagementTitle;
+
+  /// No description provided for @onboardingCashManagementDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Track your fund box balance, manage transfers, and monitor incoming transactions all in one place.'**
+  String get onboardingCashManagementDesc;
+
+  /// No description provided for @onboardingExpensesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense Tracking'**
+  String get onboardingExpensesTitle;
+
+  /// No description provided for @onboardingExpensesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Record and categorize your expenses with invoice scanning support for easy documentation.'**
+  String get onboardingExpensesDesc;
+
+  /// No description provided for @onboardingTransfersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Money Transfers'**
+  String get onboardingTransfersTitle;
+
+  /// No description provided for @onboardingTransfersDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Send money with automatic currency conversion and exchange rate tracking.'**
+  String get onboardingTransfersDesc;
+
+  /// No description provided for @onboardingExportsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export & Reports'**
+  String get onboardingExportsTitle;
+
+  /// No description provided for @onboardingExportsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate PDF and Excel reports of your financial data with customizable filters.'**
+  String get onboardingExportsDesc;
+
+  /// No description provided for @viewTutorial.
+  ///
+  /// In en, this message translates to:
+  /// **'View Tutorial'**
+  String get viewTutorial;
+
+  /// No description provided for @syncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing...'**
+  String get syncing;
+
+  /// No description provided for @syncCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync completed successfully'**
+  String get syncCompleted;
+
+  /// No description provided for @syncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync failed'**
+  String get syncFailed;
+
+  /// No description provided for @retrySync.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry Sync'**
+  String get retrySync;
+
+  /// No description provided for @syncRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get syncRetry;
+
+  /// No description provided for @syncAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync All'**
+  String get syncAll;
+
+  /// No description provided for @syncInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync in progress'**
+  String get syncInProgress;
+
+  /// No description provided for @adminDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Dashboard'**
+  String get adminDashboard;
+
+  /// No description provided for @statistics.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get statistics;
+
+  /// No description provided for @totalUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Users'**
+  String get totalUsers;
+
+  /// No description provided for @totalExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Expenses'**
+  String get totalExpenses;
+
+  /// No description provided for @pendingSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending Sync'**
+  String get pendingSync;
+
+  /// No description provided for @totalAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Amount'**
+  String get totalAmount;
+
+  /// No description provided for @recentUserExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent User Expenses'**
+  String get recentUserExpenses;
+
+  /// No description provided for @userActivitySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'User Activity Summary'**
+  String get userActivitySummary;
+
+  /// No description provided for @createdBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Created by'**
+  String get createdBy;
+
+  /// No description provided for @unknownUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown User'**
+  String get unknownUser;
+
+  /// No description provided for @noExpensesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses yet'**
+  String get noExpensesYet;
+
+  /// No description provided for @noUserActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'No user activity'**
+  String get noUserActivity;
+
+  /// No description provided for @syncPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get syncPending;
+
+  /// No description provided for @syncSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing'**
+  String get syncSyncing;
+
+  /// No description provided for @syncSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced'**
+  String get syncSynced;
+
+  /// No description provided for @syncStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync Status'**
+  String get syncStatus;
+
+  /// No description provided for @allUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'All Users'**
+  String get allUsers;
+
+  /// No description provided for @allStatuses.
+  ///
+  /// In en, this message translates to:
+  /// **'All Statuses'**
+  String get allStatuses;
+
+  /// No description provided for @user.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get user;
+
+  /// No description provided for @filterByUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by User'**
+  String get filterByUser;
+
+  /// No description provided for @filterByRecipient.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by Recipient'**
+  String get filterByRecipient;
+
+  /// No description provided for @mustSelectSameUser.
+  ///
+  /// In en, this message translates to:
+  /// **'You must select the same user for exchange history and expenses to export the file'**
+  String get mustSelectSameUser;
+
+  /// No description provided for @exportExchanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Exchanges'**
+  String get exportExchanges;
+
+  /// No description provided for @combinedExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Combined Export'**
+  String get combinedExport;
+
+  /// No description provided for @exportUserData.
+  ///
+  /// In en, this message translates to:
+  /// **'Export User Data'**
+  String get exportUserData;
+
+  /// No description provided for @pleaseSelectUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a user first'**
+  String get pleaseSelectUser;
+
+  /// No description provided for @exportError.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Error'**
+  String get exportError;
+
+  /// No description provided for @viewInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'View Invoice'**
+  String get viewInvoice;
+
+  /// No description provided for @noInvoiceImage.
+  ///
+  /// In en, this message translates to:
+  /// **'No invoice image available'**
+  String get noInvoiceImage;
+
+  /// No description provided for @failedToLoadImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load image'**
+  String get failedToLoadImage;
+
+  /// No description provided for @invoiceImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice Image'**
+  String get invoiceImage;
+
+  /// No description provided for @unauthorizedAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Unauthorized Access'**
+  String get unauthorizedAccess;
+
+  /// No description provided for @noDataAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No data available'**
+  String get noDataAvailable;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @expenseCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense created successfully'**
+  String get expenseCreated;
+
+  /// No description provided for @expenseUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense updated successfully'**
+  String get expenseUpdated;
+
+  /// No description provided for @expenseDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense deleted successfully'**
+  String get expenseDeleted;
+
+  /// No description provided for @confirmDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Delete'**
+  String get confirmDelete;
+
+  /// No description provided for @deleteExpenseConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this expense?'**
+  String get deleteExpenseConfirmation;
+
+  /// No description provided for @deleteInvoiceConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this invoice?'**
+  String get deleteInvoiceConfirmation;
+
+  /// No description provided for @deleteInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Invoice'**
+  String get deleteInvoice;
+
+  /// No description provided for @remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get remove;
+
+  /// No description provided for @organization.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization'**
+  String get organization;
+
+  /// No description provided for @department.
+  ///
+  /// In en, this message translates to:
+  /// **'Department'**
+  String get department;
+
+  /// No description provided for @selectOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Organization'**
+  String get selectOrganization;
+
+  /// No description provided for @selectDepartment.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Department'**
+  String get selectDepartment;
+
+  /// No description provided for @organizationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select an organization'**
+  String get organizationRequired;
+
+  /// No description provided for @departmentRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a department'**
+  String get departmentRequired;
+
+  /// No description provided for @regularUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Regular User'**
+  String get regularUser;
+
+  /// No description provided for @adminUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Administrator'**
+  String get adminUser;
+
+  /// No description provided for @userType.
+  ///
+  /// In en, this message translates to:
+  /// **'User Type'**
+  String get userType;
+
+  /// No description provided for @groupCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Group Code'**
+  String get groupCode;
+
+  /// No description provided for @groupName.
+  ///
+  /// In en, this message translates to:
+  /// **'Group Name'**
+  String get groupName;
+
+  /// No description provided for @membersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get membersCount;
+
+  /// No description provided for @copyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copyCode;
+
+  /// No description provided for @copied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied!'**
+  String get copied;
+
+  /// No description provided for @regenerateCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate'**
+  String get regenerateCode;
+
+  /// No description provided for @removeMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get removeMember;
+
+  /// No description provided for @joinGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Join Group'**
+  String get joinGroup;
+
+  /// No description provided for @myGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'My Group'**
+  String get myGroup;
+
+  /// No description provided for @groupManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'Group Management'**
+  String get groupManagement;
+
+  /// No description provided for @enterGroupCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter group code'**
+  String get enterGroupCode;
+
+  /// No description provided for @groupCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'6 characters'**
+  String get groupCodeHint;
+
+  /// No description provided for @getFromAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Get this code from your admin'**
+  String get getFromAdmin;
+
+  /// No description provided for @shareWithTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this code with your team members'**
+  String get shareWithTeam;
+
+  /// No description provided for @confirmRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to remove this member from the group?'**
+  String get confirmRemove;
+
+  /// No description provided for @confirmRemoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Member'**
+  String get confirmRemoveTitle;
+
+  /// No description provided for @confirmRegenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerating will invalidate the old code. Continue?'**
+  String get confirmRegenerate;
+
+  /// No description provided for @joinedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined'**
+  String get joinedAt;
+
+  /// No description provided for @adminContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get adminContact;
+
+  /// No description provided for @contactAdminToLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact your admin to leave the group'**
+  String get contactAdminToLeave;
+
+  /// No description provided for @adminBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get adminBadge;
+
+  /// No description provided for @cannotRemoveSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot remove yourself from the group'**
+  String get cannotRemoveSelf;
+
+  /// No description provided for @searchMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Search members...'**
+  String get searchMembers;
+
+  /// No description provided for @filterByDepartment.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by Department'**
+  String get filterByDepartment;
+
+  /// No description provided for @allDepartments.
+  ///
+  /// In en, this message translates to:
+  /// **'All Departments'**
+  String get allDepartments;
+
+  /// No description provided for @noMembersFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No members found matching your filters'**
+  String get noMembersFound;
+
+  /// No description provided for @noMembersYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No members in this group yet'**
+  String get noMembersYet;
+
+  /// No description provided for @loadingMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading members...'**
+  String get loadingMembers;
+
+  /// No description provided for @clearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Filters'**
+  String get clearFilters;
+
+  /// No description provided for @codeTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Code must be 6 characters'**
+  String get codeTooShort;
+
+  /// No description provided for @codeTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Code must be exactly 6 characters'**
+  String get codeTooLong;
+
+  /// No description provided for @codeInvalidChars.
+  ///
+  /// In en, this message translates to:
+  /// **'Code must contain only letters and numbers'**
+  String get codeInvalidChars;
+
+  /// No description provided for @codeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Group code is required'**
+  String get codeRequired;
+
+  /// No description provided for @codeMustBe6.
+  ///
+  /// In en, this message translates to:
+  /// **'Code must be exactly 6 characters'**
+  String get codeMustBe6;
+
+  /// No description provided for @codeRequirements.
+  ///
+  /// In en, this message translates to:
+  /// **'Code Requirements:'**
+  String get codeRequirements;
+
+  /// No description provided for @joinInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-character group code provided by your admin to join their group.'**
+  String get joinInstructions;
+
+  /// No description provided for @joinHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have a code? Contact your admin.'**
+  String get joinHelp;
+
+  /// No description provided for @codeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Group code copied to clipboard'**
+  String get codeCopied;
+
+  /// No description provided for @memberRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Member removed successfully'**
+  String get memberRemoved;
+
+  /// No description provided for @codeRegenerated.
+  ///
+  /// In en, this message translates to:
+  /// **'Group code regenerated successfully'**
+  String get codeRegenerated;
+
+  /// No description provided for @joinedGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Successfully joined the group'**
+  String get joinedGroup;
+
+  /// No description provided for @invalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected group code is invalid'**
+  String get invalidCode;
+
+  /// No description provided for @alreadyInGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'You are already in a group'**
+  String get alreadyInGroup;
+
+  /// No description provided for @adminCannotJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Admins cannot join other groups'**
+  String get adminCannotJoin;
+
+  /// No description provided for @memberNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'User not found or not in your group'**
+  String get memberNotFound;
+
+  /// No description provided for @memberSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Member since'**
+  String get memberSince;
+
+  /// No description provided for @editProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Profile'**
+  String get editProfile;
+
+  /// No description provided for @editProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Profile'**
+  String get editProfileTitle;
+
+  /// No description provided for @profilePictureUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile picture updated successfully'**
+  String get profilePictureUpdated;
+
+  /// No description provided for @failedToLoadProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load profile'**
+  String get failedToLoadProfile;
+
+  /// No description provided for @databaseManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'Database Management'**
+  String get databaseManagement;
+
+  /// No description provided for @logoutConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get logoutConfirmTitle;
+
+  /// No description provided for @logoutConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to logout?'**
+  String get logoutConfirmMessage;
+
+  /// No description provided for @chooseFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from Gallery'**
+  String get chooseFromGallery;
+
+  /// No description provided for @failedToPickImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to pick image'**
+  String get failedToPickImage;
+
+  /// No description provided for @totalExpensesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Expenses'**
+  String get totalExpensesCount;
+
+  /// No description provided for @totalTransfersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Transfers'**
+  String get totalTransfersCount;
+
+  /// No description provided for @totalIncomingCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Incoming'**
+  String get totalIncomingCount;
+
+  /// No description provided for @totalExchangesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Exchanges'**
+  String get totalExchangesCount;
+
+  /// No description provided for @totalTransactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Transactions'**
+  String get totalTransactions;
+
+  /// No description provided for @accountAge.
+  ///
+  /// In en, this message translates to:
+  /// **'Account Age'**
+  String get accountAge;
+
+  /// No description provided for @lastActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Activity'**
+  String get lastActivity;
+
+  /// No description provided for @auditLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit Logs'**
+  String get auditLogs;
+
+  /// No description provided for @featureNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Feature Not Available'**
+  String get featureNotAvailable;
+
+  /// No description provided for @auditLogsAdminOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit logs are only available in the admin version.'**
+  String get auditLogsAdminOnly;
+
+  /// No description provided for @accessDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Access Denied'**
+  String get accessDenied;
+
+  /// No description provided for @adminPrivilegesRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin privileges required to view audit logs.'**
+  String get adminPrivilegesRequired;
+
+  /// No description provided for @noAuditLogsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No audit logs found'**
+  String get noAuditLogsFound;
+
+  /// No description provided for @auditLogDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit Log Details'**
+  String get auditLogDetails;
+
+  /// No description provided for @action.
+  ///
+  /// In en, this message translates to:
+  /// **'Action'**
+  String get action;
+
+  /// No description provided for @entityType.
+  ///
+  /// In en, this message translates to:
+  /// **'Entity Type'**
+  String get entityType;
+
+  /// No description provided for @entityId.
+  ///
+  /// In en, this message translates to:
+  /// **'Entity ID'**
+  String get entityId;
+
+  /// No description provided for @userId.
+  ///
+  /// In en, this message translates to:
+  /// **'User ID'**
+  String get userId;
+
+  /// No description provided for @ipAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'IP Address'**
+  String get ipAddress;
+
+  /// No description provided for @userAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'User Agent'**
+  String get userAgent;
+
+  /// No description provided for @changes.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get changes;
+
+  /// No description provided for @createdAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Created At'**
+  String get createdAt;
+
+  /// No description provided for @createExchange.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Exchange'**
+  String get createExchange;
+
+  /// No description provided for @selectTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Transfer'**
+  String get selectTransfer;
+
+  /// No description provided for @noTransfersAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No transfers available from admin'**
+  String get noTransfersAvailable;
+
+  /// No description provided for @transferBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Balance'**
+  String get transferBalance;
+
+  /// No description provided for @originalAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get originalAmount;
+
+  /// No description provided for @exchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Exchanged'**
+  String get exchanged;
+
+  /// No description provided for @remaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining'**
+  String get remaining;
+
+  /// No description provided for @exchangeDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Exchange Details'**
+  String get exchangeDetails;
+
+  /// No description provided for @amountSyp.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount in SYP'**
+  String get amountSyp;
+
+  /// No description provided for @amountTry.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount in TRY'**
+  String get amountTry;
+
+  /// No description provided for @exchangeCreatedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Exchange created successfully!'**
+  String get exchangeCreatedSuccess;
+
+  /// No description provided for @pleaseSelectTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a transfer first'**
+  String get pleaseSelectTransfer;
+
+  /// No description provided for @amountExceedsBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount exceeds remaining balance'**
+  String get amountExceedsBalance;
+
+  /// No description provided for @noExchangesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No exchanges yet'**
+  String get noExchangesYet;
+
+  /// No description provided for @createFirstExchange.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your first exchange from a transfer'**
+  String get createFirstExchange;
+
+  /// No description provided for @exchangeDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Exchange Date'**
+  String get exchangeDate;
+
+  /// No description provided for @youWillReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'You will receive'**
+  String get youWillReceive;
+
+  /// No description provided for @selectDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Date'**
+  String get selectDate;
+
+  /// No description provided for @amountUsdRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount in USD is required'**
+  String get amountUsdRequired;
+
+  /// No description provided for @exchangeRateRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Exchange rate is required'**
+  String get exchangeRateRequired;
+
+  /// No description provided for @notes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notes;
+
+  /// No description provided for @optional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get optional;
+
+  /// No description provided for @pleaseEnterAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter amount'**
+  String get pleaseEnterAmount;
+
+  /// No description provided for @invalidAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid amount'**
+  String get invalidAmount;
+
+  /// No description provided for @pleaseEnterRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter exchange rate'**
+  String get pleaseEnterRate;
+
+  /// No description provided for @invalidRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid exchange rate'**
+  String get invalidRate;
+
+  /// No description provided for @recipient.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipient'**
+  String get recipient;
+
+  /// No description provided for @rate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate'**
+  String get rate;
+
+  /// No description provided for @noGroupFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No group found'**
+  String get noGroupFound;
+
+  /// No description provided for @notInGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'You are not in a group'**
+  String get notInGroup;
+
+  /// No description provided for @notInGroupDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Join a group using a code provided by your admin to access shared financial data.'**
+  String get notInGroupDesc;
+
+  /// No description provided for @joinDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the group code provided by your admin to join their group and access shared financial data.'**
+  String get joinDescription;
+
+  /// No description provided for @helpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Need Help?'**
+  String get helpTitle;
+
+  /// No description provided for @help1.
+  ///
+  /// In en, this message translates to:
+  /// **'The group code is 6 characters long'**
+  String get help1;
+
+  /// No description provided for @help2.
+  ///
+  /// In en, this message translates to:
+  /// **'Get the code from your admin'**
+  String get help2;
+
+  /// No description provided for @help3.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only be in one group at a time'**
+  String get help3;
+
+  /// No description provided for @help4.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact your admin if you need to leave a group'**
+  String get help4;
+
+  /// No description provided for @expensesListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses List'**
+  String get expensesListTitle;
+
+  /// No description provided for @sum.
+  ///
+  /// In en, this message translates to:
+  /// **'SUM'**
+  String get sum;
+
+  /// No description provided for @noExpensesToExport.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses to export'**
+  String get noExpensesToExport;
+
+  /// No description provided for @noInvoicesToExport.
+  ///
+  /// In en, this message translates to:
+  /// **'No invoices to export'**
+  String get noInvoicesToExport;
+
+  /// No description provided for @filterByDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by Date'**
+  String get filterByDate;
+
+  /// No description provided for @allDates.
+  ///
+  /// In en, this message translates to:
+  /// **'All Dates'**
+  String get allDates;
+
+  /// No description provided for @customRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Range'**
+  String get customRange;
+
+  /// No description provided for @clearAllData.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All Data'**
+  String get clearAllData;
+
+  /// No description provided for @clearAllDataWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This will delete ALL data from the database including:\\n\\n• All expenses\\n• All transfers\\n• All incoming transactions\\n• All fund box records\\n• All exchanges\\n\\nThis action cannot be undone!'**
+  String get clearAllDataWarning;
+
+  /// No description provided for @deleteAllData.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete All Data'**
+  String get deleteAllData;
+
+  /// No description provided for @allDataCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'✓ All data cleared successfully'**
+  String get allDataCleared;
+
+  /// No description provided for @errorClearingData.
+  ///
+  /// In en, this message translates to:
+  /// **'Error clearing data'**
+  String get errorClearingData;
+
+  /// No description provided for @errorLoadingStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading stats'**
+  String get errorLoadingStats;
+
+  /// No description provided for @goBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Back'**
+  String get goBack;
+
+  /// No description provided for @loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get loading;
+
+  /// No description provided for @error.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get error;
+
+  /// No description provided for @success.
+  ///
+  /// In en, this message translates to:
+  /// **'Success'**
+  String get success;
+
+  /// No description provided for @warning.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get warning;
+
+  /// No description provided for @info.
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get info;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
+
+  /// No description provided for @continueButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueButton;
+
+  /// No description provided for @submit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get submit;
+
+  /// No description provided for @update.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get update;
+
+  /// No description provided for @refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refresh;
+
+  /// No description provided for @filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filter;
+
+  /// No description provided for @sort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get sort;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
+  /// No description provided for @apply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get apply;
+
+  /// No description provided for @reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get reset;
+
+  /// No description provided for @select.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get select;
+
+  /// No description provided for @selected.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected'**
+  String get selected;
+
+  /// No description provided for @none.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get none;
+
+  /// No description provided for @other.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get other;
+
+  /// No description provided for @more.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get more;
+
+  /// No description provided for @less.
+  ///
+  /// In en, this message translates to:
+  /// **'Less'**
+  String get less;
+
+  /// No description provided for @showMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show More'**
+  String get showMore;
+
+  /// No description provided for @showLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Less'**
+  String get showLess;
+
+  /// No description provided for @viewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View All'**
+  String get viewAll;
+
+  /// No description provided for @viewDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View Details'**
+  String get viewDetails;
+
+  /// No description provided for @details.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get details;
+
+  /// No description provided for @settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
+
+  /// No description provided for @filterByGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by Group'**
+  String get filterByGroup;
+
+  /// No description provided for @allGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'All Groups'**
+  String get allGroups;
+
+  /// No description provided for @grandTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Grand Total'**
+  String get grandTotal;
+
+  /// No description provided for @expenseCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense Count'**
+  String get expenseCount;
+
+  /// No description provided for @pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pending;
+
+  /// No description provided for @approved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get approved;
+
+  /// No description provided for @rejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get rejected;
+
+  /// No description provided for @errorLoadingData.
+  ///
+  /// In en, this message translates to:
+  /// **'Error Loading Data'**
+  String get errorLoadingData;
+
+  /// No description provided for @noExpensesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses found'**
+  String get noExpensesFound;
+
+  /// No description provided for @loadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load More'**
+  String get loadMore;
+
+  /// No description provided for @noDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No description'**
+  String get noDescription;
+
+  /// No description provided for @help.
+  ///
+  /// In en, this message translates to:
+  /// **'Help'**
+  String get help;
+
+  /// No description provided for @about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
+
+  /// No description provided for @version.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get version;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
+
+  /// No description provided for @theme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get theme;
+
+  /// No description provided for @light.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get light;
+
+  /// No description provided for @dark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get dark;
+
+  /// No description provided for @system.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get system;
+
+  /// No description provided for @superadminRegistrationSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'SuperAdmin Registration Successful'**
+  String get superadminRegistrationSuccess;
+
+  /// No description provided for @groupCodeGenerated.
+  ///
+  /// In en, this message translates to:
+  /// **'Group Code Generated'**
+  String get groupCodeGenerated;
+
+  /// No description provided for @shareWithAdmins.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this code with your admins to allow them to join your group'**
+  String get shareWithAdmins;
+
+  /// No description provided for @copyGroupCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Group Code'**
+  String get copyGroupCode;
+
+  /// No description provided for @expenseOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense Overview'**
+  String get expenseOverview;
+
+  /// No description provided for @adminGroupSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Group Summary'**
+  String get adminGroupSummary;
+
+  /// No description provided for @viewGroupDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View Group Details'**
+  String get viewGroupDetails;
+
+  /// No description provided for @pendingExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending Expenses'**
+  String get pendingExpenses;
+
+  /// No description provided for @approvedExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved Expenses'**
+  String get approvedExpenses;
+
+  /// No description provided for @rejectedExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected Expenses'**
+  String get rejectedExpenses;
+
+  /// No description provided for @updateFundBoxBalances.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Fund Box Balances'**
+  String get updateFundBoxBalances;
+
+  /// No description provided for @errorLoadingFundBox.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading fund box'**
+  String get errorLoadingFundBox;
+
+  /// No description provided for @loadingFundBox.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading fund box...'**
+  String get loadingFundBox;
+
+  /// No description provided for @exportCompletedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Export completed successfully'**
+  String get exportCompletedSuccessfully;
+
+  /// No description provided for @failedToLoadImageError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load image'**
+  String get failedToLoadImageError;
+
+  /// No description provided for @sypCurrencyFull.
+  ///
+  /// In en, this message translates to:
+  /// **'SYP (Syrian Pounds)'**
+  String get sypCurrencyFull;
+
+  /// No description provided for @tryCurrencyFull.
+  ///
+  /// In en, this message translates to:
+  /// **'TRY (Turkish Lira)'**
+  String get tryCurrencyFull;
+
+  /// No description provided for @fifteenDays.
+  ///
+  /// In en, this message translates to:
+  /// **'15 Days'**
+  String get fifteenDays;
+
+  /// No description provided for @monthPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get monthPeriod;
+
+  /// No description provided for @allTime.
+  ///
+  /// In en, this message translates to:
+  /// **'All Time'**
+  String get allTime;
+
+  /// No description provided for @filterByCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by Currency'**
+  String get filterByCurrency;
+
+  /// No description provided for @noExchangesToExport.
+  ///
+  /// In en, this message translates to:
+  /// **'No exchanges to export'**
+  String get noExchangesToExport;
+
+  /// No description provided for @english.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get english;
+
+  /// No description provided for @arabic.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic'**
+  String get arabic;
+
+  /// No description provided for @selectLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Language'**
+  String get selectLanguage;
+
+  /// No description provided for @languageChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Language changed successfully'**
+  String get languageChanged;
+
+  /// No description provided for @languageSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Language Settings'**
+  String get languageSettings;
+
+  /// No description provided for @appLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'App Language'**
+  String get appLanguage;
+
+  /// No description provided for @changeLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Language'**
+  String get changeLanguage;
+
+  /// No description provided for @hasInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Has Invoice'**
+  String get hasInvoice;
+
+  /// No description provided for @selectDateRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Date Range'**
+  String get selectDateRange;
+
+  /// No description provided for @myExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'My Expenses'**
+  String get myExpenses;
+
+  /// No description provided for @me.
+  ///
+  /// In en, this message translates to:
+  /// **'Me'**
+  String get me;
+
+  /// No description provided for @allCurrencies.
+  ///
+  /// In en, this message translates to:
+  /// **'All Currencies'**
+  String get allCurrencies;
+
+  /// No description provided for @expenseCreatedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense created successfully'**
+  String get expenseCreatedSuccessfully;
+
+  /// No description provided for @createExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Expense'**
+  String get createExpense;
+
+  /// No description provided for @filters.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get filters;
+
+  /// No description provided for @clearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All'**
+  String get clearAll;
+
+  /// No description provided for @dateRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Date Range'**
+  String get dateRange;
+
+  /// No description provided for @errorLoadingExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading expenses'**
+  String get errorLoadingExpenses;
+
+  /// No description provided for @createFirstExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your first expense'**
+  String get createFirstExpense;
+
+  /// No description provided for @exportData.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Data'**
+  String get exportData;
+
+  /// No description provided for @activeFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Filters from Expense Page'**
+  String get activeFilters;
+
+  /// No description provided for @noFiltersApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'No filters applied - exporting all expenses'**
+  String get noFiltersApplied;
+
+  /// No description provided for @specificUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Specific User'**
+  String get specificUser;
+
+  /// No description provided for @exportWillApplyFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Export will apply filters from the Expense page'**
+  String get exportWillApplyFilters;
+
+  /// No description provided for @exportOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Options'**
+  String get exportOptions;
+
+  /// No description provided for @exportToPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Export to PDF'**
+  String get exportToPdf;
+
+  /// No description provided for @exportPdfDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Export expenses as a PDF document'**
+  String get exportPdfDescription;
+
+  /// No description provided for @exportToExcel.
+  ///
+  /// In en, this message translates to:
+  /// **'Export to Excel'**
+  String get exportToExcel;
+
+  /// No description provided for @exportExcelDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Export expenses as an Excel spreadsheet'**
+  String get exportExcelDescription;
+
+  /// No description provided for @exportInvoiceImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Invoice Images'**
+  String get exportInvoiceImages;
+
+  /// No description provided for @exportInvoicesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Export all invoice photos as a single PDF'**
+  String get exportInvoicesDescription;
+
+  /// No description provided for @exportCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Export completed'**
+  String get exportCompleted;
+
+  /// No description provided for @exportMyExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Export My Expenses'**
+  String get exportMyExpenses;
+
+  /// No description provided for @exportUserInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Export User Info'**
+  String get exportUserInfo;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
-  bool isSupported(Locale locale) => ['en', 'ar'].contains(locale.languageCode);
-
-  @override
-  Future<AppLocalizations> load(Locale locale) async {
-    return AppLocalizations(locale);
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
   }
 
   @override
+  bool isSupported(Locale locale) =>
+      <String>['ar', 'en'].contains(locale.languageCode);
+
+  @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'ar':
+      return AppLocalizationsAr();
+    case 'en':
+      return AppLocalizationsEn();
+  }
+
+  throw FlutterError(
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }

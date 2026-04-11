@@ -5,13 +5,20 @@ import '../models/exchange_dto.dart';
 /// API Data Source for Exchange operations
 /// Implements the Exchange API endpoints from EXCHANGE_FEATURE_FLUTTER_GUIDE.md
 /// Supports balance-based exchanges (optional transferId) and multi-currency (SYP/TRY)
+/// Backend v3.1+ supports converted_amount as alternative to exchange_rate
 abstract class ExchangeApiDataSource {
   /// Create a new exchange (balance-based, optional transferId)
+  /// 
+  /// Either exchangeRate OR convertedAmount must be provided (not both required).
+  /// If both are provided, backend will validate they match.
+  /// If only convertedAmount is provided, backend will calculate exchangeRate automatically.
+  /// If only exchangeRate is provided, backend will calculate convertedAmount automatically.
   Future<ExchangeDto> createExchange({
     int? transferId, // Optional - for balance-based exchanges
     required String targetCurrency, // 'SYP' or 'TRY'
     required double amountUsd,
-    required double exchangeRate,
+    double? exchangeRate, // Optional if convertedAmount is provided
+    double? convertedAmount, // Optional if exchangeRate is provided (Backend v3.1+)
     required String exchangeDate,
     String? notes,
   });
@@ -40,19 +47,37 @@ class ExchangeApiDataSourceImpl implements ExchangeApiDataSource {
     int? transferId,
     required String targetCurrency,
     required double amountUsd,
-    required double exchangeRate,
+    double? exchangeRate,
+    double? convertedAmount,
     required String exchangeDate,
     String? notes,
   }) async {
     try {
-      final body = {
+      // Validate that at least one of exchangeRate or convertedAmount is provided
+      if (exchangeRate == null && convertedAmount == null) {
+        throw ApiException(
+          message: 'Either exchange_rate or converted_amount must be provided',
+          statusCode: 422,
+        );
+      }
+
+      final body = <String, dynamic>{
         if (transferId != null) 'transfer_id': transferId, // Optional
         'target_currency': targetCurrency,
         'amount_usd': amountUsd,
-        'exchange_rate': exchangeRate,
         'exchange_date': exchangeDate,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
       };
+
+      // Add exchange_rate if provided
+      if (exchangeRate != null) {
+        body['exchange_rate'] = exchangeRate;
+      }
+
+      // Add converted_amount if provided (Backend v3.1+)
+      if (convertedAmount != null) {
+        body['converted_amount'] = convertedAmount;
+      }
 
       final response = await apiClient.post('/exchanges', body: body);
 

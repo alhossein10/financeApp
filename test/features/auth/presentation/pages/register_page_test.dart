@@ -11,8 +11,6 @@ import 'package:finance_app/features/auth/domain/entities/user.dart';
 import 'package:finance_app/core/config/flavor_config.dart';
 import 'package:finance_app/features/admin_group/presentation/widgets/group_code_input.dart';
 import 'package:finance_app/features/auth/presentation/widgets/admin_registration_success_dialog.dart';
-import 'package:finance_app/features/auth/domain/entities/organization.dart';
-import 'package:finance_app/features/auth/domain/entities/department.dart';
 import 'package:finance_app/l10n/app_localizations.dart';
 
 class MockAuthBloc extends Mock implements AuthBloc {}

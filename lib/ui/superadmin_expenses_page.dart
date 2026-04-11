@@ -1,6 +1,14 @@
+import 'dart:io';
+import 'package:excel/excel.dart' as xls;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import '../features/admin/presentation/bloc/super_admin_analytics_bloc.dart';
 import '../features/admin/presentation/bloc/super_admin_analytics_event.dart';
 import '../features/admin/presentation/bloc/super_admin_analytics_state.dart';
@@ -61,7 +69,7 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
     );
   }
 
-  Widget _buildContent(BuildContext context, AppLocalizations l10n) {
+  Widget _buildContent(BuildContext context, AppLocalizations? l10n) {
     return BlocBuilder<SuperAdminAnalyticsBloc, SuperAdminAnalyticsState>(
       builder: (context, state) {
         if (state is SuperAdminAnalyticsLoading) {
@@ -104,7 +112,7 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
                     );
                   },
                   icon: const Icon(Icons.refresh),
-                  label: Text(l10n.translate('retry')),
+                  label: Text(l10n?.retry ?? 'Retry'),
                 ),
               ],
             ),
@@ -117,7 +125,7 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
 
           if (analytics.adminGroups.isEmpty) {
             return Center(
-              child: Text(l10n.translate('no_data_available')),
+              child: Text(l10n?.noDataAvailable ?? 'No data available'),
             );
           }
 
@@ -156,7 +164,29 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
               ),
               
               // Filter dropdown
-              _buildFilterSection(context, l10n, analytics),
+              _buildFilterSection(context, l10n!, analytics),
+              const SizedBox(height: 16),
+              
+              // Export buttons - apply to filtered groups
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                    onPressed: filteredGroups.isEmpty 
+                        ? null 
+                        : () => _exportFilteredGroupsToPdf(context, l10n!, filteredGroups),
+                    tooltip: l10n?.exportPdf ?? 'Export PDF',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.table_chart, color: Colors.green),
+                    onPressed: filteredGroups.isEmpty 
+                        ? null 
+                        : () => _exportFilteredGroupsToExcel(context, l10n!, filteredGroups),
+                    tooltip: l10n?.exportExcel ?? 'Export Excel',
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
               
               // Grand total card (only show when "All Groups" is selected)
@@ -178,7 +208,7 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: Text(
-                      l10n.translate('no_expenses_found'),
+                      l10n?.noExpensesYet ?? 'No expenses found',
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   ),
@@ -186,14 +216,14 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
               else
                 ...filteredGroups.map((groupAnalytics) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildGroupSummaryCard(context, l10n, groupAnalytics),
+                  child: _buildGroupSummaryCard(context, l10n!, groupAnalytics),
                 )),
             ],
           );
         }
 
         return Center(
-          child: Text(l10n.translate('no_data_available')),
+          child: Text(l10n?.noDataAvailable ?? 'No data available'),
         );
       },
     );
@@ -211,7 +241,7 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
     return Row(
       children: [
         Text(
-          '${l10n.translate('filter_by_group')}:',
+          '${l10n?.filterByGroup ?? 'Filter by Group'}:',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
         const SizedBox(width: 12),
@@ -222,7 +252,7 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
             items: [
               DropdownMenuItem<String?>(
                 value: null,
-                child: Text(l10n.translate('all_groups')),
+                child: Text(l10n?.allGroups ?? 'All Groups'),
               ),
               ...analytics.adminGroups.map((groupAnalytics) {
                 return DropdownMenuItem<String?>(
@@ -269,7 +299,7 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  l10n.translate('grand_total'),
+                  l10n?.grandTotal ?? 'Grand Total',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -284,7 +314,7 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  l10n.translate('total_expenses'),
+                  l10n?.totalExpenses ?? 'Total Expenses',
                   style: TextStyle(
                     fontSize: 14,
                     color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8),
@@ -439,7 +469,7 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  l10n.translate('expense_count'),
+                  l10n?.expenseCount ?? 'Expense Count',
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
@@ -526,6 +556,266 @@ class _SuperAdminExpensesPageState extends State<SuperAdminExpensesPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _exportFilteredGroupsToPdf(
+    BuildContext context,
+    AppLocalizations l10n,
+    List<AdminGroupAnalytics> groups,
+  ) async {
+    try {
+      // Load Arabic font
+      final amiriRegular = await rootBundle.load('assets/fonts/Amiri-Regular.ttf');
+      final arabicFont = pw.Font.ttf(amiriRegular);
+      
+      final doc = pw.Document();
+      final numberFormat = NumberFormat('#,###.##');
+      
+      // If only one group, export that group
+      // If multiple groups, export all of them
+      // Note: No localization in superadmin PDF exports - using hardcoded English text
+      for (var groupAnalytics in groups) {
+        final expenses = groupAnalytics.expenses;
+        
+        doc.addPage(
+          pw.MultiPage(
+            pageFormat: PdfPageFormat.a4,
+            build: (ctx) => [
+              // Header
+              pw.Header(
+                level: 0,
+                child: pw.Text(
+                  'Admin Group Summary - ${groupAnalytics.adminGroup.name}',
+                  style: pw.TextStyle(font: arabicFont, fontSize: 18),
+                ),
+              ),
+              pw.SizedBox(height: 20),
+              
+              // Group Information Section
+              pw.Directionality(
+                textDirection: pw.TextDirection.rtl,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Group Name: ${groupAnalytics.adminGroup.name}',
+                      style: pw.TextStyle(font: arabicFont, fontSize: 14),
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Text(
+                      'Group Code: ${groupAnalytics.adminGroup.code}',
+                      style: pw.TextStyle(font: arabicFont, fontSize: 14),
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Text(
+                      'Admin: ${groupAnalytics.adminGroup.adminUser.name}',
+                      style: pw.TextStyle(font: arabicFont, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+              
+              pw.SizedBox(height: 20),
+              pw.Divider(thickness: 2),
+              pw.SizedBox(height: 20),
+              
+              // Analytics Section - make separation obvious
+              pw.Directionality(
+                textDirection: pw.TextDirection.rtl,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Expense Overview',
+                      style: pw.TextStyle(font: arabicFont, fontSize: 16, fontWeight: pw.FontWeight.bold),
+                    ),
+                    pw.SizedBox(height: 16),
+                    pw.Table(
+                      border: pw.TableBorder.all(width: 0.5),
+                      children: [
+                        // Header
+                        pw.TableRow(
+                          decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                          children: [
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text(
+                                'Expense Count',
+                                style: pw.TextStyle(font: arabicFont, fontSize: 12),
+                              ),
+                            ),
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text(
+                                'USD',
+                                style: pw.TextStyle(font: arabicFont, fontSize: 12),
+                              ),
+                            ),
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text(
+                                'SYP',
+                                style: pw.TextStyle(font: arabicFont, fontSize: 12),
+                              ),
+                            ),
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text(
+                                'TRY',
+                                style: pw.TextStyle(font: arabicFont, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Data
+                        pw.TableRow(
+                          children: [
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text(
+                                '${expenses.count}',
+                                style: pw.TextStyle(font: arabicFont, fontSize: 12),
+                              ),
+                            ),
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text(
+                                expenses.totalUsd.toStringAsFixed(2),
+                                style: pw.TextStyle(font: arabicFont, fontSize: 12),
+                              ),
+                            ),
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text(
+                                numberFormat.format(expenses.totalSyp),
+                                style: pw.TextStyle(font: arabicFont, fontSize: 12),
+                              ),
+                            ),
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text(
+                                numberFormat.format(expenses.totalTry),
+                                style: pw.TextStyle(font: arabicFont, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      
+      final dir = await getTemporaryDirectory();
+      final fileName = groups.length == 1
+          ? 'analytics_${groups.first.adminGroup.name.replaceAll(' ', '_')}.pdf'
+          : 'analytics_all_groups.pdf';
+      final file = File(p.join(dir.path, fileName));
+      await file.writeAsBytes(await doc.save());
+      await OpenFilex.open(file.path);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export completed successfully')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportFilteredGroupsToExcel(
+    BuildContext context,
+    AppLocalizations l10n,
+    List<AdminGroupAnalytics> groups,
+  ) async {
+    try {
+      final excel = xls.Excel.createExcel();
+      excel.delete('Sheet1');
+      
+      // Note: No localization in superadmin Excel exports - using hardcoded English text
+      for (var groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+        final groupAnalytics = groups[groupIndex];
+        final expenses = groupAnalytics.expenses;
+        
+        // Create a sheet for each group (or use "Analytics" for single group)
+        // Excel sheet names have limitations: max 31 characters, no special characters like / \ ? * [ ]
+        String sheetName;
+        if (groups.length == 1) {
+          sheetName = 'Analytics';
+        } else {
+          // Create a safe sheet name: limit to 31 chars, remove invalid characters
+          final safeName = groupAnalytics.adminGroup.name
+              .replaceAll(RegExp(r'[/\\?*\[\]]'), '_')
+              .replaceAll(' ', '_');
+          final truncatedName = safeName.length > 20 ? safeName.substring(0, 20) : safeName;
+          sheetName = 'Group_${groupIndex + 1}_$truncatedName';
+          // Ensure total length doesn't exceed 31 characters
+          if (sheetName.length > 31) {
+            sheetName = sheetName.substring(0, 31);
+          }
+        }
+        final sheet = excel[sheetName];
+        
+        int rowIndex = 0;
+        
+        // Group Information
+        sheet.cell(xls.CellIndex.indexByString('A${rowIndex + 1}')).value = xls.TextCellValue('Group Name');
+        sheet.cell(xls.CellIndex.indexByString('B${rowIndex + 1}')).value = xls.TextCellValue(groupAnalytics.adminGroup.name);
+        rowIndex++;
+        sheet.cell(xls.CellIndex.indexByString('A${rowIndex + 1}')).value = xls.TextCellValue('Group Code');
+        sheet.cell(xls.CellIndex.indexByString('B${rowIndex + 1}')).value = xls.TextCellValue(groupAnalytics.adminGroup.code);
+        rowIndex++;
+        sheet.cell(xls.CellIndex.indexByString('A${rowIndex + 1}')).value = xls.TextCellValue('Admin');
+        sheet.cell(xls.CellIndex.indexByString('B${rowIndex + 1}')).value = xls.TextCellValue(groupAnalytics.adminGroup.adminUser.name);
+        rowIndex += 2; // Empty row for separation
+        
+        // Analytics Section
+        sheet.cell(xls.CellIndex.indexByString('A${rowIndex + 1}')).value = xls.TextCellValue('Expense Overview');
+        rowIndex++;
+        
+        // Headers
+        sheet.cell(xls.CellIndex.indexByString('A${rowIndex + 1}')).value = xls.TextCellValue('Expense Count');
+        sheet.cell(xls.CellIndex.indexByString('B${rowIndex + 1}')).value = xls.TextCellValue('USD');
+        sheet.cell(xls.CellIndex.indexByString('C${rowIndex + 1}')).value = xls.TextCellValue('SYP');
+        sheet.cell(xls.CellIndex.indexByString('D${rowIndex + 1}')).value = xls.TextCellValue('TRY');
+        rowIndex++;
+        
+        // Data
+        sheet.cell(xls.CellIndex.indexByString('A${rowIndex + 1}')).value = xls.IntCellValue(expenses.count);
+        sheet.cell(xls.CellIndex.indexByString('B${rowIndex + 1}')).value = xls.DoubleCellValue(expenses.totalUsd);
+        sheet.cell(xls.CellIndex.indexByString('C${rowIndex + 1}')).value = xls.DoubleCellValue(expenses.totalSyp);
+        sheet.cell(xls.CellIndex.indexByString('D${rowIndex + 1}')).value = xls.DoubleCellValue(expenses.totalTry);
+      }
+      
+      final dir = await getTemporaryDirectory();
+      final fileName = groups.length == 1
+          ? 'analytics_${groups.first.adminGroup.name.replaceAll(' ', '_')}.xlsx'
+          : 'analytics_all_groups.xlsx';
+      final file = File(p.join(dir.path, fileName));
+      await file.writeAsBytes(excel.encode()!);
+      await OpenFilex.open(file.path);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export completed successfully')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export error: $e')),
+        );
+      }
+    }
   }
 
 }

@@ -1,4 +1,3 @@
-import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:finance_app/core/api/api_exception.dart';
 import 'package:finance_app/core/error/failures.dart';

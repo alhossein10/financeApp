@@ -1,19 +1,26 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../core/services/profile_image_upload_service.dart';
 import '../../../auth/domain/entities/user.dart';
+import 'profile_image_upload.dart';
+import 'profile_photo_widget.dart';
 
 /// Card displaying user profile information
 class ProfileInfoCard extends StatelessWidget {
   final User user;
   final VoidCallback onEditPressed;
   final VoidCallback onProfilePicturePressed;
+  final ProfileImageUploadService? uploadService;
+  final Function(String imageUrl)? onImageUploaded;
 
   const ProfileInfoCard({
     super.key,
     required this.user,
     required this.onEditPressed,
     required this.onProfilePicturePressed,
+    this.uploadService,
+    this.onImageUploaded,
   });
 
   @override
@@ -26,43 +33,10 @@ class ProfileInfoCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Profile Picture
-            GestureDetector(
-              onTap: onProfilePicturePressed,
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.grey[300],
-                    backgroundImage: user.profilePicturePath != null
-                        ? FileImage(File(user.profilePicturePath!))
-                        : null,
-                    child: user.profilePicturePath == null
-                        ? Icon(
-                            Icons.person,
-                            size: 50,
-                            color: Colors.grey[600],
-                          )
-                        : null,
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      padding: const EdgeInsets.all(4),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        size: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            // Profile Picture - Use new ProfilePhotoWidget
+            ProfilePhotoWidget(
+              photoUrl: user.profileImageUrl,
+              size: 100,
             ),
             const SizedBox(height: 16),
             
@@ -86,7 +60,7 @@ class ProfileInfoCard extends StatelessWidget {
             
             // Account Creation Date
             Text(
-              '${l10n.memberSince} ${_formatDate(user.createdAt)}',
+              '${l10n?.memberSince ?? 'Member since'} ${_formatDate(user.createdAt)}',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.grey[500],
               ),
@@ -97,7 +71,7 @@ class ProfileInfoCard extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onEditPressed,
               icon: const Icon(Icons.edit),
-              label: Text(l10n.editProfile ?? 'Edit Profile'),
+              label: Text(l10n?.editProfile ?? 'Edit Profile'),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 40),
               ),

@@ -33,7 +33,8 @@ class ProfileDto {
       role: json['role'] as String,
       createdAt: DateFormatter.fromApiTimestamp(json['created_at'] as String),
       updatedAt: DateFormatter.fromApiTimestampNullable(json['updated_at'] as String?),
-      profilePicturePath: json['profile_picture_path'] as String?,
+      // Handle both profile_photo_url and profile_picture_path for compatibility
+      profilePicturePath: json['profile_photo_url'] as String? ?? json['profile_picture_path'] as String?,
       lastLogin: DateFormatter.fromApiTimestampNullable(json['last_login'] as String?),
     );
   }

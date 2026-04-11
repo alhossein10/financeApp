@@ -36,19 +36,19 @@ android {
         create("superAdmin") {
             dimension = "version"
             applicationId = "com.app.finance.superadmin"
-            resValue("string", "app_name", "Finance SuperAdmin")
+            // App name is defined in android/app/src/superAdmin/res/values/strings.xml
         }
         
         create("admin") {
             dimension = "version"
             applicationId = "com.app.finance.admin"
-            resValue("string", "app_name", "Finance Admin")
+            // App name is defined in android/app/src/admin/res/values/strings.xml
         }
         
         create("user") {
             dimension = "version"
             applicationId = "com.app.finance.user"
-            resValue("string", "app_name", "Finance")
+            // App name is defined in android/app/src/user/res/values/strings.xml
         }
     }
 

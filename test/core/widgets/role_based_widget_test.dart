@@ -15,8 +15,8 @@ void main() {
           body: RoleBasedWidget(
             user: user,
             requiredRole: UserRole.admin,
-            child: child,
             fallback: fallback,
+            child: child,
           ),
         ),
       );
@@ -351,8 +351,8 @@ void main() {
                     RoleBasedWidget(
                       user: currentUser,
                       requiredRole: UserRole.admin,
-                      child: const Text('Admin Content'),
                       fallback: const Text('User Content'),
+                      child: const Text('Admin Content'),
                     ),
                     ElevatedButton(
                       onPressed: () {

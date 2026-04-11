@@ -1,7 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/services/secure_storage_service.dart';
-import '../../../../core/services/supabase_service.dart';
 import '../../../../core/utils/validators.dart';
 import '../entities/user.dart';
 import '../repositories/auth_repository.dart';

@@ -29,6 +29,12 @@ abstract class FundBoxApiDataSource {
     double? balanceSyp,
     double? balanceTry,
   });
+
+  /// Get fund box for a specific user (Admin/SuperAdmin only)
+  /// [userId] - The ID of the user whose fund box to retrieve
+  /// [currency] optional: 'USD', 'SYP', or 'TRY' to get specific currency balance
+  /// Throws [ApiException] if operation fails
+  Future<FundBoxDto> getFundBoxByUserId(int userId, {String? currency});
 }
 
 /// Implementation of FundBoxApiDataSource
@@ -234,6 +240,59 @@ class FundBoxApiDataSourceImpl implements FundBoxApiDataSource {
         throw ApiException(
           statusCode: response.statusCode ?? 500,
           message: response.data['message'] ?? 'Failed to update fund box',
+        );
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(
+        statusCode: 500,
+        message: 'Unexpected error: ${e.toString()}',
+      );
+    }
+  }
+
+  @override
+  Future<FundBoxDto> getFundBoxByUserId(int userId, {String? currency}) async {
+    try {
+      // Build URL with user_id and optional currency query parameters
+      String url = '/fund-box?user_id=$userId';
+      if (currency != null && currency.isNotEmpty) {
+        url += '&currency=$currency';
+      }
+      
+      print('[FundBoxApiDataSource] Fetching fund box for user $userId from: $url');
+      final response = await apiClient.get(url);
+
+      if (response.statusCode == 200) {
+        final responseData = response.data;
+        Map<String, dynamic> data;
+        if (responseData is Map<String, dynamic> && responseData.containsKey('data')) {
+          data = responseData['data'] as Map<String, dynamic>;
+        } else if (responseData is Map<String, dynamic>) {
+          data = responseData;
+        } else {
+          throw ApiException(
+            statusCode: 200,
+            message: 'Invalid response format: expected Map but got ${responseData.runtimeType}',
+          );
+        }
+        
+        return FundBoxDto.fromJson(data);
+      } else if (response.statusCode == 403) {
+        throw ApiException(
+          statusCode: 403,
+          message: 'Access denied. Admin/SuperAdmin privileges required.',
+        );
+      } else if (response.statusCode == 404) {
+        throw ApiException(
+          statusCode: 404,
+          message: 'User fund box not found',
+        );
+      } else {
+        throw ApiException(
+          statusCode: response.statusCode ?? 500,
+          message: response.data['message'] ?? 'Failed to get user fund box',
         );
       }
     } on ApiException {

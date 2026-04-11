@@ -3,12 +3,9 @@ import '../../domain/entities/organization.dart';
 /// Data model for Organization with JSON serialization
 class OrganizationModel extends Organization {
   const OrganizationModel({
-    required int id,
-    required String name,
-  }) : super(
-          id: id,
-          name: name,
-        );
+    required super.id,
+    required super.name,
+  });
 
   /// Creates an OrganizationModel from JSON
   factory OrganizationModel.fromJson(Map<String, dynamic> json) {

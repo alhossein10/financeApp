@@ -15,6 +15,7 @@ class UserModel extends User {
     required super.createdAt,
     super.updatedAt,
     super.profilePicturePath,
+    super.profileImageUrl,
     super.lastLogin,
     super.organizationName,
     super.departmentName,
@@ -38,6 +39,7 @@ class UserModel extends User {
           ? DateTime.fromMillisecondsSinceEpoch(map['updated_at'] as int)
           : null,
       profilePicturePath: map['profile_picture_path'] as String?,
+      profileImageUrl: map['profile_image_url'] as String?,
       lastLogin: map['last_login'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['last_login'] as int)
           : null,
@@ -66,6 +68,7 @@ class UserModel extends User {
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt?.millisecondsSinceEpoch,
       'profile_picture_path': profilePicturePath,
+      'profile_image_url': profileImageUrl,
       'last_login': lastLogin?.millisecondsSinceEpoch,
       'organization_name': organizationName,
       'department_name': departmentName,
@@ -86,6 +89,7 @@ class UserModel extends User {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       profilePicturePath: user.profilePicturePath,
+      profileImageUrl: user.profileImageUrl,
       lastLogin: user.lastLogin,
       organizationName: user.organizationName,
       departmentName: user.departmentName,
@@ -107,6 +111,7 @@ class UserModel extends User {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? profilePicturePath,
+    String? profileImageUrl,
     DateTime? lastLogin,
     String? organizationName,
     String? departmentName,
@@ -125,6 +130,7 @@ class UserModel extends User {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       profilePicturePath: profilePicturePath ?? this.profilePicturePath,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       lastLogin: lastLogin ?? this.lastLogin,
       organizationName: organizationName ?? this.organizationName,
       departmentName: departmentName ?? this.departmentName,

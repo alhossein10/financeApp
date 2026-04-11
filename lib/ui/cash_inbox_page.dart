@@ -25,6 +25,7 @@ import '../models/transfer.dart';
 import '../utils/pdf_export_helper.dart';
 import '../core/config/flavor_config.dart';
 import '../core/widgets/watermark_background.dart';
+import '../state/filters.dart';
 
 class CashInboxPage extends StatefulWidget {
   const CashInboxPage({super.key});
@@ -38,6 +39,16 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
   late TabController _tabController;
   
   int? _currentUserId;
+  
+  // Filters for admin flavor
+  DateFilterType _outgoingDateFilterType = DateFilterType.all;
+  DateTime? _outgoingStartDate;
+  DateTime? _outgoingEndDate;
+  String? _selectedUserFilter; // User ID as string for outgoing transfers
+  
+  DateFilterType _incomingDateFilterType = DateFilterType.all;
+  DateTime? _incomingStartDate;
+  DateTime? _incomingEndDate;
 
   @override
   void initState() {
@@ -63,6 +74,11 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
       context.read<FundBoxBloc>().add(LoadFundBox(_currentUserId!));
       context.read<TransferBloc>().add(LoadTransfersEvent(_currentUserId!));
       context.read<IncomingBloc>().add(const LoadIncoming());
+      
+      // Load group members for admin flavor (for user filter)
+      if (FlavorConfig.instance.isAdmin) {
+        context.read<AdminGroupBloc>().add(const LoadGroupMembersEvent());
+      }
     }
   }
 
@@ -75,13 +91,97 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
   }
 
   List<TransferRecord> _filterTransfers(List<TransferRecord> transfers) {
-    // No filtering - return all transfers
-    return transfers;
+    if (!FlavorConfig.instance.isAdmin) {
+      return transfers;
+    }
+    
+    var filtered = transfers;
+    
+    // Apply user filter
+    // For outgoing transfers, we filter by recipientUserId (who receives the transfer)
+    // because the userId is always the admin (who sends it)
+    if (_selectedUserFilter != null && _selectedUserFilter!.isNotEmpty) {
+      final filteredUserId = int.tryParse(_selectedUserFilter!);
+      if (filteredUserId != null) {
+        filtered = filtered.where((t) {
+          // Check if the transfer's recipientUserId matches the selected user
+          // If recipientUserId is null, skip this transfer (shouldn't happen for admin transfers)
+          return t.recipientUserId == filteredUserId;
+        }).toList();
+      }
+    }
+    
+    // Apply date filter
+    if (_outgoingDateFilterType != DateFilterType.all) {
+      final now = DateTime.now();
+      filtered = filtered.where((t) {
+        final transferDate = t.transactionDate;
+        switch (_outgoingDateFilterType) {
+          case DateFilterType.today:
+            return transferDate.year == now.year &&
+                transferDate.month == now.month &&
+                transferDate.day == now.day;
+          case DateFilterType.thisWeek:
+            final weekStart = now.subtract(Duration(days: now.weekday - 1));
+            final weekEnd = weekStart.add(const Duration(days: 6));
+            return transferDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                transferDate.isBefore(weekEnd.add(const Duration(days: 1)));
+          case DateFilterType.thisMonth:
+            return transferDate.year == now.year &&
+                transferDate.month == now.month;
+          case DateFilterType.custom:
+            if (_outgoingStartDate != null && _outgoingEndDate != null) {
+              return transferDate.isAfter(_outgoingStartDate!.subtract(const Duration(days: 1))) &&
+                  transferDate.isBefore(_outgoingEndDate!.add(const Duration(days: 1)));
+            }
+            return true;
+          case DateFilterType.all:
+            return true;
+        }
+      }).toList();
+    }
+    
+    return filtered;
   }
 
   List<IncomingRecord> _filterIncoming(List<IncomingRecord> incoming) {
-    // No filtering - return all incoming
-    return incoming;
+    if (!FlavorConfig.instance.isAdmin) {
+      return incoming;
+    }
+    
+    var filtered = incoming;
+    
+    // Apply date filter
+    if (_incomingDateFilterType != DateFilterType.all) {
+      final now = DateTime.now();
+      filtered = filtered.where((i) {
+        final incomingDate = i.transactionDate;
+        switch (_incomingDateFilterType) {
+          case DateFilterType.today:
+            return incomingDate.year == now.year &&
+                incomingDate.month == now.month &&
+                incomingDate.day == now.day;
+          case DateFilterType.thisWeek:
+            final weekStart = now.subtract(Duration(days: now.weekday - 1));
+            final weekEnd = weekStart.add(const Duration(days: 6));
+            return incomingDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                incomingDate.isBefore(weekEnd.add(const Duration(days: 1)));
+          case DateFilterType.thisMonth:
+            return incomingDate.year == now.year &&
+                incomingDate.month == now.month;
+          case DateFilterType.custom:
+            if (_incomingStartDate != null && _incomingEndDate != null) {
+              return incomingDate.isAfter(_incomingStartDate!.subtract(const Duration(days: 1))) &&
+                  incomingDate.isBefore(_incomingEndDate!.add(const Duration(days: 1)));
+            }
+            return true;
+          case DateFilterType.all:
+            return true;
+        }
+      }).toList();
+    }
+    
+    return filtered;
   }
 
   Future<void> _setFundBalance(BuildContext context) async {
@@ -140,7 +240,7 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.translate('cancel')),
+            child: Text(l10n?.cancel ?? 'Cancel'),
           ),
           TextButton(
             onPressed: () {
@@ -154,7 +254,7 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
                 'try': tryValue,
               });
             },
-            child: Text(l10n.translate('save')),
+            child: Text(l10n?.save ?? 'Save'),
           ),
         ],
       ),
@@ -226,7 +326,7 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
       if (name.isEmpty || amount == null || amount <= 0) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.translate('please_fill_all_fields') ?? 'Please fill all fields')),
+            SnackBar(content: Text(l10n?.pleaseFillAllFields ?? 'Please fill all fields')),
           );
         }
         return;
@@ -283,23 +383,23 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: Text(l10n.translate('new_incoming')),
+          title: Text(l10n?.newIncoming ?? 'New Incoming'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: descController,
-                  decoration: InputDecoration(labelText: l10n.translate('description')),
+                  decoration: InputDecoration(labelText: l10n?.description ?? 'Description'),
                 ),
                 TextField(
                   controller: amountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(labelText: l10n.translate('amount_usd')),
+                  decoration: InputDecoration(labelText: l10n?.amountUsd ?? 'Amount USD'),
                 ),
                 const SizedBox(height: 8),
                 ListTile(
-                  title: Text(l10n.translate('transaction_date')),
+                  title: Text(l10n?.transactionDate ?? 'Transaction Date'),
                   subtitle: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
                   trailing: const Icon(Icons.calendar_today),
                   onTap: () async {
@@ -318,8 +418,8 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.translate('cancel'))),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.translate('create'))),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n?.cancel ?? 'Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n?.create ?? 'Create')),
           ],
         ),
       ),
@@ -341,11 +441,13 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
   }
 
   Future<void> _exportCash() async {
+    final l10n = AppLocalizations.of(context);
     try {
       final transferState = context.read<TransferBloc>().state;
       final incomingState = context.read<IncomingBloc>().state;
       
       if (transferState is TransferLoaded && incomingState is IncomingLoaded) {
+        // Map transfers and include recipientUserId for filtering
         final transfers = transferState.transfers.map((t) => TransferRecord(
           id: t.id,
           recipientName: t.recipientName,
@@ -356,6 +458,7 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
           transactionDate: t.transactionDate,
           createdAt: t.createdAt,
           userId: t.userId,
+          recipientUserId: t.recipientUserId, // Include recipientUserId for filtering
         )).toList();
         
         final incoming = incomingState.incomingList.map((i) => IncomingRecord(
@@ -367,21 +470,28 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
           userId: i.userId,
         )).toList();
         
-        // Apply filters (including user filter for admin) before exporting
+        // Apply filters (including user filter for admin and date filters) before exporting
         final filteredTransfers = _filterTransfers(transfers);
         final filteredIncoming = _filterIncoming(incoming);
         
         await PdfExportHelper.exportCashTransactions(
           transfers: filteredTransfers,
           incoming: filteredIncoming,
-          title: 'معاملات النقد',
+          title: l10n?.cashTransactions ?? 'معاملات الصندوق',
         );
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n?.success ?? 'Export completed successfully'),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
-        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${l10n.translate('error') ?? 'Error'}: $e')),
+          SnackBar(content: Text('${l10n?.exportError ?? 'Export error'}: $e')),
         );
       }
     }
@@ -409,7 +519,7 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.translate('add_exchange')),
+        title: Text(l10n?.addExchange ?? 'Add Exchange'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -417,24 +527,24 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
               TextField(
                 controller: convertedUsdCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: l10n.translate('converted_amount')),
+                decoration: InputDecoration(labelText: l10n?.convertedAmount ?? 'Converted Amount'),
               ),
               TextField(
                 controller: rateCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: l10n.translate('exchange_rate')),
+                decoration: InputDecoration(labelText: l10n?.exchangeRate ?? 'Exchange Rate'),
               ),
               TextField(
                 controller: convertedTotalSypCtrl,
                 readOnly: true,
-                decoration: InputDecoration(labelText: l10n.translate('converted_total_syp')),
+                decoration: InputDecoration(labelText: l10n?.convertedTotalSyp ?? 'Converted Total SYP'),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.translate('cancel'))),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.translate('save'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n?.cancel ?? 'Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n?.save ?? 'Save')),
         ],
       ),
     );
@@ -468,17 +578,17 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.translate('exchange_history')),
+        title: Text(l10n?.exchangeHistory ?? 'Exchange History'),
         content: exchanges.isEmpty
-            ? Text(l10n.translate('no_exchanges'))
+            ? Text(l10n?.noExchanges ?? 'No Exchanges')
             : SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: exchanges.map((e) => Card(
                     child: ListTile(
-                      title: Text('${e.convertedAmountUsd.toStringAsFixed(2)} ${l10n.translate('usd')}'),
+                      title: Text('${e.convertedAmountUsd.toStringAsFixed(2)} ${l10n?.usd ?? 'USD'}'),
                       subtitle: Text(
-                        '${l10n.translate('exchange_rate')}: ${e.manualUsdToSypRate?.toStringAsFixed(0) ?? '-'} → ${e.amountSypAtExchange?.toStringAsFixed(0) ?? '-'} ${l10n.translate('syp')}',
+                        '${l10n?.exchangeRate ?? 'Exchange Rate'}: ${e.manualUsdToSypRate?.toStringAsFixed(0) ?? '-'} → ${e.amountSypAtExchange?.toStringAsFixed(0) ?? '-'} ${l10n?.syp ?? 'SYP'}',
                       ),
                       trailing: Text('${e.createdAt.day}/${e.createdAt.month}/${e.createdAt.year}'),
                     ),
@@ -488,7 +598,7 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.translate('cancel')),
+            child: Text(l10n?.cancel ?? 'Cancel'),
           ),
         ],
       ),
@@ -505,12 +615,12 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
           listener: (context, state) {
             if (state is TransferCreated) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.translate('transfer_created'))),
+                SnackBar(content: Text(l10n?.transferCreated ?? 'Transfer Created')),
               );
               _reload();
             } else if (state is TransferDeleted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.translate('transfer_deleted'))),
+                SnackBar(content: Text(l10n?.transferDeleted ?? 'Transfer Deleted')),
               );
               _reload();
             } else if (state is TransferError) {
@@ -678,27 +788,180 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
               },
             ),
             
-            // Export Row
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.picture_as_pdf),
-                    onPressed: _exportCash,
-                    tooltip: l10n.translate('export_cash'),
-                  ),
-                ],
+            // Export Row with Filters (for admin flavor)
+            if (FlavorConfig.instance.isAdmin)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    // Date filter dropdown
+                    Expanded(
+                      child: AnimatedBuilder(
+                        animation: _tabController,
+                        builder: (context, child) {
+                          final isOutgoing = _tabController.index == 0;
+                          return DropdownButtonFormField<DateFilterType>(
+                            value: isOutgoing 
+                                ? _outgoingDateFilterType 
+                                : _incomingDateFilterType,
+                            decoration: InputDecoration(
+                              labelText: l10n?.date ?? 'Date',
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            isExpanded: true,
+                            items: [
+                              DropdownMenuItem(value: DateFilterType.all, child: Text(l10n?.all ?? 'All')),
+                              DropdownMenuItem(value: DateFilterType.today, child: Text(l10n?.today ?? 'Today')),
+                              DropdownMenuItem(value: DateFilterType.thisWeek, child: Text(l10n?.thisWeek ?? 'This Week')),
+                              DropdownMenuItem(value: DateFilterType.thisMonth, child: Text(l10n?.thisMonth ?? 'This Month')),
+                              DropdownMenuItem(value: DateFilterType.custom, child: Text(l10n?.custom ?? 'Custom')),
+                            ],
+                            onChanged: (v) async {
+                              if (v == null) return;
+                              
+                              if (v == DateFilterType.custom) {
+                                final startDate = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now(),
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (startDate != null) {
+                                  final endDate = await showDatePicker(
+                                    context: context,
+                                    initialDate: startDate,
+                                    firstDate: startDate,
+                                    lastDate: DateTime.now(),
+                                  );
+                                  if (endDate != null) {
+                                    setState(() {
+                                      if (isOutgoing) {
+                                        _outgoingDateFilterType = v;
+                                        _outgoingStartDate = startDate;
+                                        _outgoingEndDate = endDate;
+                                      } else {
+                                        _incomingDateFilterType = v;
+                                        _incomingStartDate = startDate;
+                                        _incomingEndDate = endDate;
+                                      }
+                                    });
+                                  }
+                                }
+                              } else {
+                                setState(() {
+                                  if (isOutgoing) {
+                                    _outgoingDateFilterType = v;
+                                    _outgoingStartDate = null;
+                                    _outgoingEndDate = null;
+                                  } else {
+                                    _incomingDateFilterType = v;
+                                    _incomingStartDate = null;
+                                    _incomingEndDate = null;
+                                  }
+                                });
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // User filter dropdown (only for outgoing tab)
+                    AnimatedBuilder(
+                      animation: _tabController,
+                      builder: (context, child) {
+                        if (_tabController.index != 0) {
+                          return const SizedBox.shrink();
+                        }
+                        return Expanded(
+                          child: BlocBuilder<AdminGroupBloc, AdminGroupState>(
+                            builder: (context, state) {
+                              // Get all group members from state
+                              final members = state.members;
+                              final allUserIds = <int, String>{};
+                              
+                              // Add current admin user (admin owner)
+                              final authState = context.read<AuthBloc>().state;
+                              if (authState is AuthAuthenticated && authState.user != null) {
+                                allUserIds[authState.user!.id] = authState.user!.username;
+                              }
+                              
+                              // Add all group members
+                              for (final member in members) {
+                                if (!allUserIds.containsKey(member.id)) {
+                                  allUserIds[member.id] = member.name;
+                                }
+                              }
+                              
+                              // Sort users by name
+                              final sortedUsers = allUserIds.entries.toList()
+                                ..sort((a, b) => a.value.compareTo(b.value));
+                              
+                              return DropdownButtonFormField<String?>(
+                                value: _selectedUserFilter,
+                                decoration: InputDecoration(
+                                  labelText: l10n?.user ?? 'User',
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                isExpanded: true,
+                                hint: Text(l10n?.allUsers ?? 'All Users'),
+                                items: [
+                                  DropdownMenuItem<String?>(
+                                    value: null,
+                                    child: Text(l10n?.allUsers ?? 'All Users'),
+                                  ),
+                                  ...sortedUsers.map((entry) {
+                                    return DropdownMenuItem<String?>(
+                                      value: entry.key.toString(),
+                                      child: Text(entry.value),
+                                    );
+                                  }),
+                                ],
+                                onChanged: (v) {
+                                  setState(() {
+                                    _selectedUserFilter = v;
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    // Export button
+                    IconButton(
+                      icon: const Icon(Icons.picture_as_pdf),
+                      onPressed: _exportCash,
+                      tooltip: l10n?.exportCash ?? 'Export Cash',
+                    ),
+                  ],
+                ),
+              )
+            else
+              // Export button only (for non-admin flavors)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.picture_as_pdf),
+                      onPressed: _exportCash,
+                      tooltip: l10n?.exportCash ?? 'Export Cash',
+                    ),
+                  ],
+                ),
               ),
-            ),
             
             // Tabs
             TabBar(
               controller: _tabController,
               tabs: [
-                Tab(text: l10n.translate('outgoing')),
-                Tab(text: l10n.translate('incoming')),
+                Tab(text: l10n?.outgoing ?? 'Outgoing'),
+                Tab(text: l10n?.incoming ?? 'Incoming'),
               ],
             ),
             
@@ -718,7 +981,7 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
     );
   }
 
-  Widget _buildOutgoingTab(AppLocalizations l10n) {
+  Widget _buildOutgoingTab(AppLocalizations? l10n) {
     return Column(
       children: [
         Padding(
@@ -728,116 +991,126 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
               FilledButton.icon(
                 onPressed: () => _createTransfer(context),
                 icon: const Icon(Icons.call_made),
-                label: Text(l10n.translate('transfer')),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/exchange-history');
-                },
-                icon: const Icon(Icons.currency_exchange),
-                label: Text(l10n.translate('exchange_history')),
+                label: Text(l10n?.transfer ?? 'Transfer'),
               ),
             ],
           ),
         ),
         Expanded(
-          child: BlocBuilder<TransferBloc, TransferState>(
-            builder: (context, state) {
-              if (state is TransferLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              
-              if (state is TransferLoaded) {
-                final transfers = state.transfers.map((t) => TransferRecord(
-                  id: t.id,
-                  recipientName: t.recipientName,
-                  amountUsd: t.amountUsd,
-                  convertedAmountUsd: t.convertedAmountUsd,
-                  amountSypAtExchange: t.amountSypAtExchange,
-                  manualUsdToSypRate: t.manualUsdToSypRate,
-                  transactionDate: t.transactionDate,
-                  createdAt: t.createdAt,
-                  userId: t.userId,
-                )).toList();
+          child: RefreshIndicator(
+            onRefresh: () async => _reload(),
+            child: BlocBuilder<TransferBloc, TransferState>(
+              builder: (context, state) {
+                if (state is TransferLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
                 
-                // Apply filters
-                final items = _filterTransfers(transfers);
-                if (items.isEmpty) {
-                  return Center(
-                    child: Text(l10n.translate('no_syp_recorded') ?? 'No transfers found'),
+                if (state is TransferLoaded) {
+                  final transfers = state.transfers.map((t) => TransferRecord(
+                    id: t.id,
+                    recipientName: t.recipientName,
+                    amountUsd: t.amountUsd,
+                    convertedAmountUsd: t.convertedAmountUsd,
+                    amountSypAtExchange: t.amountSypAtExchange,
+                    manualUsdToSypRate: t.manualUsdToSypRate,
+                    transactionDate: t.transactionDate,
+                    createdAt: t.createdAt,
+                    userId: t.userId,
+                    recipientUserId: t.recipientUserId,
+                  )).toList();
+                  
+                  // Apply filters
+                  final items = _filterTransfers(transfers);
+                  if (items.isEmpty) {
+                    return ListView(
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          child: Center(
+                            child: Text(l10n?.noSypRecorded ?? 'No transfers found'),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final t = items[index];
+                      
+                      return FutureBuilder<List<ExchangeRecord>>(
+                        future: _db.listExchangesByTransfer(t.id!),
+                        builder: (context, exchangeSnapshot) {
+                          // Calculate total exchanged amount (initial + all additional exchanges)
+                          final initialConverted = t.convertedAmountUsd ?? 0.0;
+                          final additionalExchanges = exchangeSnapshot.data ?? [];
+                          final totalExchanged = initialConverted + 
+                            additionalExchanges.fold(0.0, (sum, e) => sum + e.convertedAmountUsd);
+                          
+                          final actualUsdRemaining = t.amountUsd - totalExchanged;
+                          
+                          return Card(
+                            child: ListTile(
+                              title: Text(
+                                '${t.recipientName} • ${actualUsdRemaining.toStringAsFixed(2)} ${l10n?.usd ?? 'USD'}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                '${t.transactionDate.day}/${t.transactionDate.month}/${t.transactionDate.year}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: PopupMenuButton<String>(
+                                onSelected: (value) async {
+                                  if (value == 'refund_delete') {
+                                    if (_currentUserId != null) {
+                                      context.read<TransferBloc>().add(DeleteTransferEvent(
+                                        transferId: t.id!,
+                                        userId: _currentUserId!,
+                                        refund: true,
+                                      ));
+                                    }
+                                  } else if (value == 'delete') {
+                                    if (_currentUserId != null) {
+                                      context.read<TransferBloc>().add(DeleteTransferEvent(
+                                        transferId: t.id!,
+                                        userId: _currentUserId!,
+                                        refund: false,
+                                      ));
+                                    }
+                                  }
+                                },
+                                itemBuilder: (ctx) => [
+                                  PopupMenuItem(value: 'refund_delete', child: Text(l10n?.refundDelete ?? 'Refund and Delete')),
+                                  PopupMenuItem(value: 'delete', child: Text(l10n?.delete ?? 'Delete')),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   );
                 }
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final t = items[index];
-                    
-                    return FutureBuilder<List<ExchangeRecord>>(
-                      future: _db.listExchangesByTransfer(t.id!),
-                      builder: (context, exchangeSnapshot) {
-                        // Calculate total exchanged amount (initial + all additional exchanges)
-                        final initialConverted = t.convertedAmountUsd ?? 0.0;
-                        final additionalExchanges = exchangeSnapshot.data ?? [];
-                        final totalExchanged = initialConverted + 
-                          additionalExchanges.fold(0.0, (sum, e) => sum + e.convertedAmountUsd);
-                        
-                        final actualUsdRemaining = t.amountUsd - totalExchanged;
-                        
-                        return Card(
-                          child: ListTile(
-                            title: Text(
-                              '${t.recipientName} • ${actualUsdRemaining.toStringAsFixed(2)} ${l10n.translate('usd')}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              '${t.transactionDate.day}/${t.transactionDate.month}/${t.transactionDate.year}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: PopupMenuButton<String>(
-                              onSelected: (value) async {
-                                if (value == 'refund_delete') {
-                                  if (_currentUserId != null) {
-                                    context.read<TransferBloc>().add(DeleteTransferEvent(
-                                      transferId: t.id!,
-                                      userId: _currentUserId!,
-                                      refund: true,
-                                    ));
-                                  }
-                                } else if (value == 'delete') {
-                                  if (_currentUserId != null) {
-                                    context.read<TransferBloc>().add(DeleteTransferEvent(
-                                      transferId: t.id!,
-                                      userId: _currentUserId!,
-                                      refund: false,
-                                    ));
-                                  }
-                                }
-                              },
-                              itemBuilder: (ctx) => [
-                                PopupMenuItem(value: 'refund_delete', child: Text(l10n.translate('refund_delete'))),
-                                PopupMenuItem(value: 'delete', child: Text(l10n.translate('delete'))),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                
+                return ListView(
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      child: Center(child: Text(l10n?.noSypRecorded ?? 'No transfers found')),
+                    ),
+                  ],
                 );
-              }
-              
-              return Center(child: Text(l10n.translate('no_syp_recorded')));
-            },
+              },
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildIncomingTab(AppLocalizations l10n) {
+  Widget _buildIncomingTab(AppLocalizations? l10n) {
     return Column(
       children: [
         Padding(
@@ -849,93 +1122,101 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
                 FilledButton.icon(
                   onPressed: () => _createIncoming(context),
                   icon: const Icon(Icons.call_received),
-                  label: Text(l10n.translate('add_incoming')),
+                  label: Text(l10n?.addIncoming ?? 'Add Incoming'),
                 ),
-              if (!FlavorConfig.instance.isAdmin)
-                const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/exchange-history');
-                },
-                icon: const Icon(Icons.currency_exchange),
-                label: Text(l10n.translate('exchange_history')),
-              ),
             ],
           ),
         ),
         Expanded(
-          child: BlocBuilder<IncomingBloc, IncomingState>(
-            builder: (context, state) {
-              if (state is IncomingLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              
-              if (state is IncomingLoaded) {
-                final incoming = state.incomingList.map((i) => IncomingRecord(
-                  id: i.id,
-                  description: i.description,
-                  amountUsd: i.amountUsd,
-                  transactionDate: i.transactionDate,
-                  createdAt: i.createdAt,
-                  userId: i.userId,
-                )).toList();
-                
-                // Apply filters
-                final items = _filterIncoming(incoming);
-                if (items.isEmpty) {
-                  return Center(
-                    child: Text(l10n.translate('no_syp_recorded') ?? 'No incoming found'),
-                  );
+          child: RefreshIndicator(
+            onRefresh: () async => _reload(),
+            child: BlocBuilder<IncomingBloc, IncomingState>(
+              builder: (context, state) {
+                if (state is IncomingLoading) {
+                  return const Center(child: CircularProgressIndicator());
                 }
                 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final i = items[index];
-                    // Note: Transfers from SuperAdmin will appear in this list
-                    // They are automatically non-deletable for admins (admin flavor can't delete incoming)
-                    // Regular users can delete their own incoming records, but transfers appear in transfers tab, not incoming
-                    return Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.add_circle, color: Colors.green),
-                        title: Text(
-                          '${i.description} • ${i.amountUsd.toStringAsFixed(2)} ${l10n.translate('usd')}',
-                          overflow: TextOverflow.ellipsis,
+                if (state is IncomingLoaded) {
+                  final incoming = state.incomingList.map((i) => IncomingRecord(
+                    id: i.id,
+                    description: i.description,
+                    amountUsd: i.amountUsd,
+                    transactionDate: i.transactionDate,
+                    createdAt: i.createdAt,
+                    userId: i.userId,
+                  )).toList();
+                  
+                  // Apply filters
+                  final items = _filterIncoming(incoming);
+                  if (items.isEmpty) {
+                    return ListView(
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          child: Center(
+                            child: Text(l10n?.noSypRecorded ?? 'No incoming found'),
+                          ),
                         ),
-                        subtitle: Text(
-                          '${i.transactionDate.day}/${i.transactionDate.month}/${i.transactionDate.year}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        // Remove popup menu in admin flavor (admins can't delete incoming, including transfers from SuperAdmin)
-                        trailing: FlavorConfig.instance.isAdmin
-                            ? null
-                            : PopupMenuButton<String>(
-                                onSelected: (value) {
-                                  if (value == 'refund_delete') {
-                                    context.read<IncomingBloc>().add(DeleteIncoming(
-                                      id: i.id!,
-                                      refund: true,
-                                    ));
-                                  } else if (value == 'delete') {
-                                    context.read<IncomingBloc>().add(DeleteIncoming(
-                                      id: i.id!,
-                                      refund: false,
-                                    ));
-                                  }
-                                },
-                                itemBuilder: (ctx) => [
-                                  PopupMenuItem(value: 'refund_delete', child: Text(l10n.translate('refund_delete'))),
-                                  PopupMenuItem(value: 'delete', child: Text(l10n.translate('delete'))),
-                                ],
-                              ),
-                      ),
+                      ],
                     );
-                  },
+                  }
+                  
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final i = items[index];
+                      // Note: Transfers from SuperAdmin will appear in this list
+                      // They are automatically non-deletable for admins (admin flavor can't delete incoming)
+                      // Regular users can delete their own incoming records, but transfers appear in transfers tab, not incoming
+                      return Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.add_circle, color: Colors.green),
+                          title: Text(
+                            '${i.description} • ${i.amountUsd.toStringAsFixed(2)} ${l10n?.usd ?? 'USD'}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${i.transactionDate.day}/${i.transactionDate.month}/${i.transactionDate.year}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          // Remove popup menu in admin flavor (admins can't delete incoming, including transfers from SuperAdmin)
+                          trailing: FlavorConfig.instance.isAdmin
+                              ? null
+                              : PopupMenuButton<String>(
+                                  onSelected: (value) {
+                                    if (value == 'refund_delete') {
+                                      context.read<IncomingBloc>().add(DeleteIncoming(
+                                        id: i.id!,
+                                        refund: true,
+                                      ));
+                                    } else if (value == 'delete') {
+                                      context.read<IncomingBloc>().add(DeleteIncoming(
+                                        id: i.id!,
+                                        refund: false,
+                                      ));
+                                    }
+                                  },
+                                  itemBuilder: (ctx) => [
+                                    PopupMenuItem(value: 'refund_delete', child: Text(l10n?.refundDelete ?? 'Refund and Delete')),
+                                    PopupMenuItem(value: 'delete', child: Text(l10n?.delete ?? 'Delete')),
+                                  ],
+                                ),
+                        ),
+                      );
+                    },
+                  );
+                }
+                return ListView(
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      child: Center(child: Text(l10n?.noSypRecorded ?? 'No incoming found')),
+                    ),
+                  ],
                 );
-              }
-              return Center(child: Text(l10n.translate('no_syp_recorded')));
-            },
+              },
+            ),
           ),
         ),
       ],
@@ -1005,7 +1286,7 @@ class _CashInboxPageState extends State<CashInboxPage> with SingleTickerProvider
 
 /// Admin Transfer Dialog with dropdown for group members (users only)
 class _AdminTransferDialog extends StatefulWidget {
-  final AppLocalizations l10n;
+  final AppLocalizations? l10n;
   final TextEditingController amountController;
   final DateTime selectedDate;
   final Function(DateTime) onDateChanged;
@@ -1059,7 +1340,7 @@ class _AdminTransferDialogState extends State<_AdminTransferDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.l10n.translate('new_transfer')),
+      title: Text(widget.l10n?.newTransfer ?? 'New Transfer'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1096,7 +1377,7 @@ class _AdminTransferDialogState extends State<_AdminTransferDialog> {
                             context.read<AdminGroupBloc>().add(const LoadGroupMembersEvent());
                           },
                           icon: const Icon(Icons.refresh),
-                          label: Text(widget.l10n.translate('retry') ?? 'Retry'),
+                          label: Text(widget.l10n?.retry ?? 'Retry'),
                         ),
                       ],
                     ),
@@ -1111,7 +1392,7 @@ class _AdminTransferDialogState extends State<_AdminTransferDialog> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          widget.l10n.translate('no_users_in_group') ?? 'No users in group',
+                          widget.l10n?.noGroupFound ?? 'No users in group',
                           style: TextStyle(color: Theme.of(context).colorScheme.error),
                         ),
                         const SizedBox(height: 8),
@@ -1120,7 +1401,7 @@ class _AdminTransferDialogState extends State<_AdminTransferDialog> {
                             context.read<AdminGroupBloc>().add(const LoadGroupMembersEvent());
                           },
                           icon: const Icon(Icons.refresh),
-                          label: Text(widget.l10n.translate('retry') ?? 'Retry'),
+                          label: Text(widget.l10n?.retry ?? 'Retry'),
                         ),
                       ],
                     ),
@@ -1129,13 +1410,13 @@ class _AdminTransferDialogState extends State<_AdminTransferDialog> {
                 
                 return DropdownButtonFormField<int>(
                   decoration: InputDecoration(
-                    labelText: widget.l10n.translate('recipient_name'),
+                    labelText: widget.l10n?.recipientName ?? 'Recipient Name',
                     border: const OutlineInputBorder(),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   isExpanded: true,
                   value: selectedRecipientId,
-                  hint: Text(widget.l10n.translate('select_recipient') ?? 'Select recipient'),
+                  hint: Text(widget.l10n?.selectRecipient ?? 'Select recipient'),
                   items: users.map((member) {
                     return DropdownMenuItem<int>(
                       value: member.id,
@@ -1171,14 +1452,14 @@ class _AdminTransferDialogState extends State<_AdminTransferDialog> {
               controller: widget.amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: widget.l10n.translate('amount_usd'),
+                labelText: widget.l10n?.amountUsd ?? 'Amount USD',
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.attach_money),
               ),
             ),
             const SizedBox(height: 16),
             ListTile(
-              title: Text(widget.l10n.translate('transaction_date')),
+              title: Text(widget.l10n?.transactionDate ?? 'Transaction Date'),
               subtitle: Text('${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
@@ -1200,7 +1481,7 @@ class _AdminTransferDialogState extends State<_AdminTransferDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, {'create': false}),
-          child: Text(widget.l10n.translate('cancel')),
+          child: Text(widget.l10n?.cancel ?? 'Cancel'),
         ),
         FilledButton(
           onPressed: selectedRecipientId == null
@@ -1231,7 +1512,7 @@ class _AdminTransferDialogState extends State<_AdminTransferDialog> {
                     });
                   }
                 },
-          child: Text(widget.l10n.translate('create')),
+          child: Text(widget.l10n?.create ?? 'Create'),
         ),
       ],
     );
@@ -1240,7 +1521,7 @@ class _AdminTransferDialogState extends State<_AdminTransferDialog> {
 
 /// User Transfer Dialog with text field for recipient name
 class _UserTransferDialog extends StatefulWidget {
-  final AppLocalizations l10n;
+  final AppLocalizations? l10n;
   final TextEditingController amountController;
   final TextEditingController nameController;
   final DateTime selectedDate;
@@ -1270,7 +1551,7 @@ class _UserTransferDialogState extends State<_UserTransferDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.l10n.translate('new_transfer')),
+      title: Text(widget.l10n?.newTransfer ?? 'New Transfer'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1278,7 +1559,7 @@ class _UserTransferDialogState extends State<_UserTransferDialog> {
             TextField(
               controller: widget.nameController,
               decoration: InputDecoration(
-                labelText: widget.l10n.translate('recipient_name'),
+                labelText: widget.l10n?.recipientName ?? 'Recipient Name',
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -1287,14 +1568,14 @@ class _UserTransferDialogState extends State<_UserTransferDialog> {
               controller: widget.amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: widget.l10n.translate('amount_usd'),
+                labelText: widget.l10n?.amountUsd ?? 'Amount USD',
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.attach_money),
               ),
             ),
             const SizedBox(height: 16),
             ListTile(
-              title: Text(widget.l10n.translate('transaction_date')),
+              title: Text(widget.l10n?.transactionDate ?? 'Transaction Date'),
               subtitle: Text('${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
@@ -1316,7 +1597,7 @@ class _UserTransferDialogState extends State<_UserTransferDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, {'create': false}),
-          child: Text(widget.l10n.translate('cancel')),
+          child: Text(widget.l10n?.cancel ?? 'Cancel'),
         ),
         FilledButton(
           onPressed: () {
@@ -1326,7 +1607,7 @@ class _UserTransferDialogState extends State<_UserTransferDialog> {
               'recipientId': null,
             });
           },
-          child: Text(widget.l10n.translate('create')),
+          child: Text(widget.l10n?.create ?? 'Create'),
         ),
       ],
     );

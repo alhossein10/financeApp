@@ -4,7 +4,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:finance_app/core/api/api_client.dart';
 import 'package:finance_app/core/api/api_exception.dart';
 import 'package:finance_app/features/export/data/datasources/export_api_datasource.dart';
-import 'package:finance_app/features/export/data/models/export_response_dto.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
 

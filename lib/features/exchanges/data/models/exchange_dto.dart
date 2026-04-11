@@ -1,6 +1,7 @@
 import '../../../../core/utils/date_formatter.dart';
 import '../../../transfers/data/models/transfer_dto.dart';
 import '../../../../core/api/models/user_dto.dart';
+import '../../domain/entities/exchange.dart';
 
 /// Data Transfer Object for Exchange entity
 /// Used for API communication with Laravel backend
@@ -52,6 +53,7 @@ class ExchangeDto {
   });
 
   /// Create DTO from JSON response
+  /// Backend v3.1+ includes converted_amount in response
   factory ExchangeDto.fromJson(Map<String, dynamic> json) {
     // Parse exchange_date - handle both YYYY-MM-DD and timestamp formats
     String exchangeDateStr = (json['exchange_date'] as String?) ?? 
@@ -62,6 +64,28 @@ class ExchangeDto {
     }
 
     final targetCurrency = (json['target_currency'] as String?) ?? 'SYP'; // Default to SYP for backward compatibility
+    final amountUsd = _parseDouble(json['amount_usd']) ?? 0.0;
+    final exchangeRate = _parseDouble(json['exchange_rate']) ?? 0.0;
+    
+    // Backend v3.1+ sends converted_amount and amount_syp/amount_try
+    // Prefer amount_syp/amount_try if available, otherwise use converted_amount
+    // If neither is available, calculate from amount_usd * exchange_rate
+    final convertedAmount = _parseDouble(json['converted_amount']);
+    final amountSypRaw = _parseDouble(json['amount_syp']);
+    final amountTryRaw = _parseDouble(json['amount_try']);
+    
+    double? amountSyp;
+    double? amountTry;
+    
+    if (targetCurrency == 'SYP') {
+      // For SYP: prefer amount_syp, then converted_amount, then calculate
+      amountSyp = amountSypRaw ?? convertedAmount ?? (amountUsd * exchangeRate);
+      amountTry = null;
+    } else if (targetCurrency == 'TRY') {
+      // For TRY: prefer amount_try, then converted_amount, then calculate
+      amountTry = amountTryRaw ?? convertedAmount ?? (amountUsd * exchangeRate);
+      amountSyp = null;
+    }
     
     return ExchangeDto(
       id: json['id'] as int?,
@@ -69,10 +93,10 @@ class ExchangeDto {
       userId: json['user_id'] as int?,
       adminGroupId: json['admin_group_id'] as int?,
       targetCurrency: targetCurrency,
-      amountUsd: _parseDouble(json['amount_usd']) ?? 0.0,
-      exchangeRate: _parseDouble(json['exchange_rate']) ?? 0.0,
-      amountSyp: targetCurrency == 'SYP' ? (_parseDouble(json['amount_syp']) ?? 0.0) : null,
-      amountTry: targetCurrency == 'TRY' ? (_parseDouble(json['amount_try']) ?? 0.0) : null,
+      amountUsd: amountUsd,
+      exchangeRate: exchangeRate,
+      amountSyp: amountSyp,
+      amountTry: amountTry,
       exchangeDate: exchangeDateStr,
       notes: json['notes'] as String?,
       createdAt: json['created_at'] != null
@@ -112,6 +136,46 @@ class ExchangeDto {
       'exchange_date': exchangeDate, // Already in YYYY-MM-DD format
       if (notes != null && notes!.isNotEmpty) 'notes': notes,
     };
+  }
+
+  /// Convert DTO to domain entity
+  Exchange toEntity() {
+    return Exchange(
+      id: id,
+      transferId: transferId,
+      userId: userId,
+      adminGroupId: adminGroupId,
+      targetCurrency: targetCurrency,
+      amountUsd: amountUsd,
+      exchangeRate: exchangeRate,
+      amountSyp: amountSyp,
+      amountTry: amountTry,
+      exchangeDate: DateFormatter.fromApiDate(exchangeDate),
+      notes: notes,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      recipientName: transfer?.recipientName,
+      userName: user?.name,
+    );
+  }
+
+  /// Create DTO from domain entity
+  factory ExchangeDto.fromEntity(Exchange entity) {
+    return ExchangeDto(
+      id: entity.id,
+      transferId: entity.transferId,
+      userId: entity.userId,
+      adminGroupId: entity.adminGroupId,
+      targetCurrency: entity.targetCurrency,
+      amountUsd: entity.amountUsd,
+      exchangeRate: entity.exchangeRate,
+      amountSyp: entity.amountSyp,
+      amountTry: entity.amountTry,
+      exchangeDate: DateFormatter.toApiDate(entity.exchangeDate),
+      notes: entity.notes,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
+    );
   }
 
   ExchangeDto copyWith({
@@ -188,6 +252,18 @@ class TransferBalanceDto {
       return double.tryParse(value) ?? 0.0;
     }
     return 0.0;
+  }
+
+  /// Convert DTO to domain entity
+  TransferBalance toEntity() {
+    return TransferBalance(
+      transferId: transferId,
+      originalAmount: originalAmount,
+      totalExchanged: totalExchanged,
+      remainingBalance: remainingBalance,
+      recipientName: recipientName,
+      transferDate: DateFormatter.fromApiDate(transferDate),
+    );
   }
 }
 

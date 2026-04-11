@@ -80,27 +80,74 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
               print('[ExpenseRepository] ⚠️ Photo file not found: $invoiceFilePath');
               photoFile = null;
             } else {
-              print('[ExpenseRepository] 📷 Photo file found, will upload with expense');
+              print('[ExpenseRepository] 📷 Photo file found, will compress and upload with expense');
+              
+              // Compress image before upload if fileUploadService is available
+              if (fileUploadService != null) {
+                try {
+                  print('[ExpenseRepository] 🗜️ Compressing image...');
+                  final compressedFile = await fileUploadService!.compressImage(photoFile);
+                  final originalSize = await photoFile.length();
+                  final compressedSize = await compressedFile.length();
+                  final compressionRatio = ((1 - (compressedSize / originalSize)) * 100).toStringAsFixed(1);
+                  print('[ExpenseRepository] ✅ Compression complete: ${originalSize ~/ 1024}KB → ${compressedSize ~/ 1024}KB (${compressionRatio}% reduction)');
+                  photoFile = compressedFile;
+                } catch (e) {
+                  print('[ExpenseRepository] ⚠️ Compression failed, using original: $e');
+                  // Continue with original file if compression fails
+                }
+              }
             }
           }
           
-          final createdDto = await apiDataSource.createExpense(dto, photoFile: photoFile);
-          final expense = createdDto.toEntity();
+          // Retry logic: attempt upload up to 3 times
+          ExpenseDto? createdDto;
+          int retryCount = 0;
+          const maxRetries = 3;
+          Exception? lastError;
           
-          print('[ExpenseRepository] ✅ API creation successful! ID: ${expense.id}');
-          if (photoFile != null) {
-            print('[ExpenseRepository] ✅ Photo uploaded successfully');
-            if (createdDto.invoicePath != null && createdDto.invoicePath!.isNotEmpty) {
-              print('[ExpenseRepository] 📥 Server invoice path: ${createdDto.invoicePath}');
-              print('[ExpenseRepository] ℹ️ Photo stored on server, will be displayed from URL');
+          while (retryCount < maxRetries && createdDto == null) {
+            try {
+              if (retryCount > 0) {
+                print('[ExpenseRepository] 🔄 Retry attempt $retryCount/$maxRetries...');
+                // Wait before retrying (exponential backoff)
+                await Future.delayed(Duration(seconds: retryCount * 2));
+              }
+              
+              createdDto = await apiDataSource.createExpense(dto, photoFile: photoFile);
+              print('[ExpenseRepository] ✅ API creation successful! ID: ${createdDto.id}');
+              
+              if (photoFile != null) {
+                print('[ExpenseRepository] ✅ Photo uploaded successfully');
+                if (createdDto.invoicePath != null && createdDto.invoicePath!.isNotEmpty) {
+                  print('[ExpenseRepository] 📥 Server invoice path: ${createdDto.invoicePath}');
+                  print('[ExpenseRepository] ℹ️ Photo stored on server, will be displayed from URL');
+                }
+              }
+            } catch (e) {
+              lastError = e as Exception;
+              retryCount++;
+              
+              if (retryCount < maxRetries) {
+                print('[ExpenseRepository] ⚠️ Upload failed (attempt $retryCount/$maxRetries): $e');
+              } else {
+                print('[ExpenseRepository] ❌ Upload failed after $maxRetries attempts: $e');
+                rethrow;
+              }
             }
           }
           
-          // Cache the created expense
-          await cacheDataSource.cacheExpense(createdDto);
-          await cacheDataSource.clearAllCache(); // Clear list caches
-          
-          return Right(expense);
+          if (createdDto != null) {
+            final expense = createdDto.toEntity();
+            
+            // Cache the created expense
+            await cacheDataSource.cacheExpense(createdDto);
+            await cacheDataSource.clearAllCache(); // Clear list caches
+            
+            return Right(expense);
+          } else {
+            throw lastError ?? Exception('Failed to create expense after $maxRetries attempts');
+          }
         } on ApiException catch (e) {
           print('[ExpenseRepository] ⚠️ API failed: ${e.message}');
           print('[ExpenseRepository] Status code: ${e.statusCode}');
@@ -143,6 +190,11 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
       // 
       // ⚠️ IMPORTANT: If expenses have admin_group_id = NULL, they might not be returned by the API.
       // This is a backend filtering issue that needs to be fixed on the Laravel side.
+      
+      // TEMPORARY FIX: Clear cache to force API reload (to get has_invoice field)
+      // TODO: Remove this after cache schema is updated
+      await cacheDataSource.clearAllCache();
+      print('[ExpenseRepository] 🗑️ Cache cleared - forcing API reload');
       
       // Cache-first strategy: Try cache first
       final cachedResponse = await cacheDataSource.getCachedExpenses();

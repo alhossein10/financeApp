@@ -18,6 +18,7 @@ class ExportBloc extends Bloc<ExportEvent, ExportState> {
   }) : super(const ExportInitial()) {
     on<RequestPdfExportEvent>(_onRequestPdfExport);
     on<RequestExcelExportEvent>(_onRequestExcelExport);
+    on<RequestInvoiceImagesExportEvent>(_onRequestInvoiceImagesExport);
     on<CheckExportStatusEvent>(_onCheckExportStatus);
     on<DownloadExportEvent>(_onDownloadExport);
     on<CancelExportEvent>(_onCancelExport);
@@ -81,6 +82,49 @@ class ExportBloc extends Bloc<ExportEvent, ExportState> {
       _lastWasPdf = false;
 
       final response = await exportApiDataSource.exportExpensesToExcel(
+        startDate: event.startDate,
+        endDate: event.endDate,
+      );
+
+      _currentExportId = response.exportId;
+
+      // Check if export is already completed (synchronous processing)
+      if (response.status == 'completed' && response.downloadUrl != null) {
+        emit(ExportReady(
+          exportId: response.exportId,
+          downloadUrl: response.downloadUrl!,
+        ));
+      } else {
+        emit(ExportQueued(
+          exportId: response.exportId,
+          status: response.status,
+          message: 'Export request submitted',
+        ));
+
+        // Start polling for status if processing
+        if (response.status == 'processing') {
+          _startStatusPolling(response.exportId);
+        }
+      }
+    } catch (e) {
+      emit(ExportFailed(message: e.toString()));
+    }
+  }
+
+  /// Handle invoice images export request
+  Future<void> _onRequestInvoiceImagesExport(
+    RequestInvoiceImagesExportEvent event,
+    Emitter<ExportState> emit,
+  ) async {
+    emit(const ExportRequesting());
+
+    try {
+      // Store request details for retry
+      _lastStartDate = event.startDate;
+      _lastEndDate = event.endDate;
+      _lastWasPdf = false; // Not PDF, but invoice bundle
+
+      final response = await exportApiDataSource.exportInvoiceImages(
         startDate: event.startDate,
         endDate: event.endDate,
       );
@@ -209,7 +253,7 @@ class ExportBloc extends Bloc<ExportEvent, ExportState> {
     _stopStatusPolling();
 
     _statusPollTimer = Timer.periodic(
-      const Duration(seconds: 3),
+      const Duration(seconds: 2), // Poll every 2 seconds as per requirements
       (_) {
         add(CheckExportStatusEvent(exportId));
       },

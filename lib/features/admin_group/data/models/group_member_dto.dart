@@ -7,6 +7,7 @@ class GroupMemberDto {
   final String name;
   final String email;
   final String role;
+  final String? profileImageUrl;
   final String? organizationName;
   final String? departmentName;
   final String createdAt;
@@ -16,6 +17,7 @@ class GroupMemberDto {
     required this.name,
     required this.email,
     required this.role,
+    this.profileImageUrl,
     this.organizationName,
     this.departmentName,
     required this.createdAt,
@@ -23,11 +25,22 @@ class GroupMemberDto {
 
   /// Create DTO from JSON response from Laravel API
   factory GroupMemberDto.fromJson(Map<String, dynamic> json) {
+    // Debug logging for profile photo
+    print('[GroupMemberDto] Parsing member: ${json['name']}');
+    print('[GroupMemberDto]   - profile_photo_url: ${json['profile_photo_url']}');
+    print('[GroupMemberDto]   - profile_image_url: ${json['profile_image_url']}');
+    print('[GroupMemberDto]   - All keys: ${json.keys.toList()}');
+    
+    final profileUrl = json['profile_photo_url'] as String? ?? json['profile_image_url'] as String?;
+    print('[GroupMemberDto]   - Final profileImageUrl: $profileUrl');
+    
     return GroupMemberDto(
       id: json['id'] as int,
       name: json['name'] as String,
       email: json['email'] as String,
       role: json['role'] as String,
+      // Support both profile_photo_url (new) and profile_image_url (old) for compatibility
+      profileImageUrl: profileUrl,
       organizationName: json['organization_name'] as String?,
       departmentName: json['department_name'] as String?,
       createdAt: json['created_at'] as String,
@@ -41,6 +54,7 @@ class GroupMemberDto {
       'name': name,
       'email': email,
       'role': role,
+      if (profileImageUrl != null) 'profile_image_url': profileImageUrl,
       if (organizationName != null) 'organization_name': organizationName,
       if (departmentName != null) 'department_name': departmentName,
       'created_at': createdAt,
@@ -54,6 +68,7 @@ class GroupMemberDto {
       name: name,
       email: email,
       role: role,
+      profileImageUrl: profileImageUrl,
       organizationName: organizationName,
       departmentName: departmentName,
       createdAt: DateTime.parse(createdAt),
@@ -67,6 +82,7 @@ class GroupMemberDto {
       name: entity.name,
       email: entity.email,
       role: entity.role,
+      profileImageUrl: entity.profileImageUrl,
       organizationName: entity.organizationName,
       departmentName: entity.departmentName,
       createdAt: entity.createdAt.toIso8601String(),
@@ -78,6 +94,7 @@ class GroupMemberDto {
     String? name,
     String? email,
     String? role,
+    String? profileImageUrl,
     String? organizationName,
     String? departmentName,
     String? createdAt,
@@ -87,6 +104,7 @@ class GroupMemberDto {
       name: name ?? this.name,
       email: email ?? this.email,
       role: role ?? this.role,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       organizationName: organizationName ?? this.organizationName,
       departmentName: departmentName ?? this.departmentName,
       createdAt: createdAt ?? this.createdAt,

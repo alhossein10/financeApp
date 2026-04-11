@@ -1,6 +1,7 @@
 import 'dart:io';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_exception.dart';
+import '../../../../core/config/api_config.dart' as core;
 import '../../domain/entities/expense.dart';
 import '../models/expense_dto.dart';
 
@@ -35,6 +36,15 @@ abstract class ExpenseApiDataSource {
   /// Delete an expense
   /// Throws [ApiException] if the request fails
   Future<void> deleteExpense(int id);
+
+  /// Download invoice image for an expense
+  /// Returns the URL to access the invoice image
+  /// Throws [ApiException] if the request fails
+  Future<String> downloadInvoice(int expenseId);
+
+  /// Delete invoice from an expense
+  /// Throws [ApiException] if the request fails
+  Future<void> deleteInvoice(int expenseId);
 }
 
 class ExpenseApiDataSourceImpl implements ExpenseApiDataSource {
@@ -290,6 +300,42 @@ class ExpenseApiDataSourceImpl implements ExpenseApiDataSource {
     } catch (e) {
       throw ApiException(
         message: 'Failed to delete expense: ${e.toString()}',
+        statusCode: 500,
+      );
+    }
+  }
+
+  @override
+  Future<String> downloadInvoice(int expenseId) async {
+    try {
+      // Import ApiConfig to get the base URL
+      final baseUrl = '${core.ApiConfig.apiUrl}/expenses/$expenseId/invoice';
+      print('[ExpenseApiDataSource] 📸 Invoice URL: $baseUrl');
+      return baseUrl;
+    } catch (e) {
+      throw ApiException(
+        message: 'Failed to get invoice URL: ${e.toString()}',
+        statusCode: 500,
+      );
+    }
+  }
+
+  @override
+  Future<void> deleteInvoice(int expenseId) async {
+    try {
+      final response = await apiClient.delete('/expenses/$expenseId/invoice');
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw ApiException(
+          message: 'Failed to delete invoice',
+          statusCode: response.statusCode,
+        );
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(
+        message: 'Failed to delete invoice: ${e.toString()}',
         statusCode: 500,
       );
     }

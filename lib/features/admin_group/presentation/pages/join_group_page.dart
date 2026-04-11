@@ -16,7 +16,7 @@ import '../widgets/join_group_form.dart';
 /// 
 /// Requirements: 4.1-4.6
 class JoinGroupPage extends StatefulWidget {
-  const JoinGroupPage({Key? key}) : super(key: key);
+  const JoinGroupPage({super.key});
 
   @override
   State<JoinGroupPage> createState() => _JoinGroupPageState();
@@ -36,7 +36,7 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          l10n.translate('admin_group.join_group') ?? 'Join Group',
+          l10n?.joinGroup ?? 'Join Group',
         ),
         centerTitle: true,
         elevation: 0,
@@ -48,7 +48,7 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  l10n.translate('admin_group.joined_group') ??
+                  l10n?.joinedGroup ??
                       'Successfully joined the group',
                 ),
                 backgroundColor: theme.colorScheme.primary,
@@ -91,7 +91,7 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
 
                   // Title
                   Text(
-                    l10n.translate('admin_group.join_group') ?? 'Join Group',
+                    l10n?.joinGroup ?? 'Join Group',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -101,7 +101,7 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
 
                   // Description
                   Text(
-                    l10n.translate('admin_group.join_description') ??
+                    l10n?.joinDescription ??
                         'Enter the group code provided by your admin to join their group and access shared financial data.',
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: theme.colorScheme.onSurface.withOpacity(0.7),
@@ -122,7 +122,7 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: theme.colorScheme.outline.withOpacity(0.2),
@@ -140,7 +140,7 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              l10n.translate('admin_group.help_title') ?? 'Need Help?',
+                              l10n?.helpTitle ?? 'Need Help?',
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: theme.colorScheme.primary,
@@ -151,25 +151,25 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
                         const SizedBox(height: 12),
                         _buildHelpItem(
                           context,
-                          l10n.translate('admin_group.help_1') ??
+                          l10n?.help1 ??
                               'The group code is 6 characters long',
                         ),
                         const SizedBox(height: 8),
                         _buildHelpItem(
                           context,
-                          l10n.translate('admin_group.help_2') ??
+                          l10n?.help2 ??
                               'Get the code from your admin',
                         ),
                         const SizedBox(height: 8),
                         _buildHelpItem(
                           context,
-                          l10n.translate('admin_group.help_3') ??
+                          l10n?.help3 ??
                               'You can only be in one group at a time',
                         ),
                         const SizedBox(height: 8),
                         _buildHelpItem(
                           context,
-                          l10n.translate('admin_group.help_4') ??
+                          l10n?.help4 ??
                               'Contact your admin if you need to leave a group',
                         ),
                       ],

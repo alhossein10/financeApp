@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/extensions/localization_extension.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../transfers/domain/entities/transfer.dart';
 import '../../../fund_box/presentation/bloc/fund_box_bloc.dart';
@@ -15,7 +16,7 @@ import '../bloc/exchange_state.dart';
 class CreateExchangePage extends StatefulWidget {
   final Transfer? transfer; // Optional - for balance-based exchanges
 
-  const CreateExchangePage({Key? key, this.transfer}) : super(key: key);
+  const CreateExchangePage({super.key, this.transfer});
 
   @override
   State<CreateExchangePage> createState() => _CreateExchangePageState();
@@ -121,7 +122,7 @@ class _CreateExchangePageState extends State<CreateExchangePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context).translate('create_exchange') ?? 'Create Exchange'),
+        title: Text(AppLocalizations.of(context)!.translate('create_exchange')),
       ),
       body: BlocConsumer<ExchangeBloc, ExchangeState>(
         listener: (context, state) {
@@ -131,15 +132,15 @@ class _CreateExchangePageState extends State<CreateExchangePage> {
               _isLoadingBalance = false;
             });
           } else if (state is ExchangeCreated) {
-            final l10n = AppLocalizations.of(context);
+            final l10n = AppLocalizations.of(context)!;
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(l10n.translate('exchange_created_success') ?? 'Exchange created successfully!')),
+              SnackBar(content: Text(l10n.translate('exchange_created_success'))),
             );
             Navigator.pop(context, state.exchange);
           } else if (state is ExchangeError) {
-            final l10n = AppLocalizations.of(context);
+            final l10n = AppLocalizations.of(context)!;
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${l10n.translate('error') ?? 'Error'}: ${state.message}')),
+              SnackBar(content: Text('${l10n.translate('error')}: ${state.message}')),
             );
           }
         },
@@ -166,7 +167,7 @@ class _CreateExchangePageState extends State<CreateExchangePage> {
                           // Currency Selection (only for balance-based exchanges)
                           if (widget.transfer == null) ...[
                             DropdownButtonFormField<String>(
-                              value: _targetCurrency,
+                              initialValue: _targetCurrency,
                               decoration: const InputDecoration(
                                 labelText: 'Target Currency',
                                 border: OutlineInputBorder(),
@@ -243,10 +244,14 @@ class _CreateExchangePageState extends State<CreateExchangePage> {
                       color: Colors.blue.shade50,
                       child: Padding(
                         padding: const EdgeInsets.all(12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(AppLocalizations.of(context).translate('you_will_receive') ?? 'You will receive:'),
+                            Text(
+                              AppLocalizations.of(context)!.translate('you_will_receive'),
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            const SizedBox(height: 4),
                             Text(
                               '${NumberFormat('#,###.##').format(_calculatedAmount)} $_targetCurrency',
                               style: const TextStyle(
@@ -263,7 +268,7 @@ class _CreateExchangePageState extends State<CreateExchangePage> {
                   // Exchange Date
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(AppLocalizations.of(context).translate('exchange_date') ?? 'Exchange Date'),
+                    title: Text(AppLocalizations.of(context)!.translate('exchange_date')),
                     subtitle: Text(DateFormat('yyyy-MM-dd').format(_selectedDate)),
                     trailing: const Icon(Icons.calendar_today),
                     onTap: () => _selectDate(context),
@@ -291,7 +296,7 @@ class _CreateExchangePageState extends State<CreateExchangePage> {
                       ),
                       child: state is ExchangeLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(AppLocalizations.of(context).translate('create_exchange') ?? 'Create Exchange'),
+                          : Text(AppLocalizations.of(context)!.translate('create_exchange')),
                     ),
                   ),
                 ],

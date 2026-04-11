@@ -4,7 +4,6 @@ import 'package:finance_app/core/api/api_exception.dart';
 import 'package:finance_app/core/services/laravel_auth_service.dart';
 import 'package:finance_app/core/services/token_manager.dart';
 import 'package:finance_app/features/fund_box/data/datasources/fund_box_api_datasource.dart';
-import 'package:finance_app/features/fund_box/data/models/fund_box_dto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:finance_app/core/config/api_config.dart';

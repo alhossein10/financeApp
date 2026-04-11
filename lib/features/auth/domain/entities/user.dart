@@ -22,6 +22,7 @@ class User extends Equatable {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final String? profilePicturePath;
+  final String? profileImageUrl; // URL for profile image from API
   final DateTime? lastLogin;
   
   // New fields for admin group management
@@ -44,6 +45,7 @@ class User extends Equatable {
     required this.createdAt,
     this.updatedAt,
     this.profilePicturePath,
+    this.profileImageUrl,
     this.lastLogin,
     this.organizationName,
     this.departmentName,
@@ -67,6 +69,7 @@ class User extends Equatable {
         createdAt,
         updatedAt,
         profilePicturePath,
+        profileImageUrl,
         lastLogin,
         organizationName,
         departmentName,

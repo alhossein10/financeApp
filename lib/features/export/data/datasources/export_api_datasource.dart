@@ -22,14 +22,32 @@ abstract class ExportApiDataSource {
     DateTime? endDate,
   });
 
-  /// Get export status (if available)
-  /// Note: The API may not have a dedicated status endpoint
-  /// This method may need to be implemented differently
+  /// Export invoice images to PDF bundle
+  /// POST /export/expenses/invoices
+  Future<ExportResponseDto> exportInvoiceImages({
+    DateTime? startDate,
+    DateTime? endDate,
+  });
+
+  /// Get export status
+  /// GET /export/{id}/status
   Future<ExportStatusDto> getExportStatus(String exportId);
 
   /// Download completed export
   /// GET /export/{id}/download
   Future<String> downloadExport(String exportId, String savePath);
+
+  /// Export system-wide data (Admin only)
+  /// POST /export/system-wide
+  Future<ExportResponseDto> exportSystemWide({
+    DateTime? startDate,
+    DateTime? endDate,
+    String? format, // 'pdf' or 'excel'
+  });
+
+  /// Get list of exports
+  /// GET /export
+  Future<List<ExportResponseDto>> getExports();
 }
 
 /// Implementation of ExportApiDataSource
@@ -96,18 +114,38 @@ class ExportApiDataSourceImpl implements ExportApiDataSource {
   }
 
   @override
+  Future<ExportResponseDto> exportInvoiceImages({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final body = ExportRequestDto(
+        startDate: startDate,
+        endDate: endDate,
+        format: 'invoice_bundle',
+      ).toJson();
+
+      final response = await apiClient.post(
+        '/export/expenses/invoices',
+        body: body,
+      );
+
+      return ExportResponseDto.fromJson(response.data);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(
+        statusCode: 500,
+        message: 'Failed to request invoice images export: $e',
+      );
+    }
+  }
+
+  @override
   Future<ExportStatusDto> getExportStatus(String exportId) async {
     try {
-      // Note: The Laravel API may not have a dedicated status endpoint
-      // This implementation assumes the status can be checked via the same export endpoint
-      // or that the export is processed synchronously
-      
-      // For now, we'll throw an exception indicating this feature is not available
-      // The BLoC should handle this gracefully
-      throw ApiException(
-        statusCode: 501,
-        message: 'Export status checking not implemented in API',
-      );
+      final response = await apiClient.get('/export/$exportId/status');
+      return ExportStatusDto.fromJson(response.data);
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -145,6 +183,54 @@ class ExportApiDataSourceImpl implements ExportApiDataSource {
       throw ApiException(
         statusCode: 500,
         message: 'Failed to download export: $e',
+      );
+    }
+  }
+
+  @override
+  Future<ExportResponseDto> exportSystemWide({
+    DateTime? startDate,
+    DateTime? endDate,
+    String? format,
+  }) async {
+    try {
+      final body = ExportRequestDto(
+        startDate: startDate,
+        endDate: endDate,
+        format: format ?? 'pdf',
+      ).toJson();
+
+      final response = await apiClient.post(
+        '/export/system-wide',
+        body: body,
+      );
+
+      return ExportResponseDto.fromJson(response.data);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(
+        statusCode: 500,
+        message: 'Failed to request system-wide export: $e',
+      );
+    }
+  }
+
+  @override
+  Future<List<ExportResponseDto>> getExports() async {
+    try {
+      final response = await apiClient.get('/export');
+
+      final data = response.data['data'] as List;
+      return data
+          .map((json) => ExportResponseDto.fromJson(json))
+          .toList();
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(
+        statusCode: 500,
+        message: 'Failed to get exports list: $e',
       );
     }
   }

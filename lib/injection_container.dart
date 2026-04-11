@@ -8,6 +8,8 @@ import 'core/services/connectivity_service.dart';
 import 'core/services/onboarding_service.dart';
 import 'core/services/role_service.dart';
 import 'core/services/secure_storage_service.dart';
+import 'core/services/language_service.dart';
+import 'core/bloc/language_bloc.dart';
 import 'core/services/sync_service.dart';
 import 'core/services/noop_sync_service.dart';
 import 'data/db.dart';
@@ -77,6 +79,7 @@ import 'features/profile/domain/usecases/get_user_profile_usecase.dart';
 import 'features/profile/domain/usecases/update_user_profile_usecase.dart';
 import 'features/profile/domain/usecases/update_profile_picture_usecase.dart';
 import 'features/profile/presentation/bloc/profile_bloc.dart';
+import 'core/services/profile_image_upload_service.dart';
 import 'features/admin/data/datasources/admin_api_datasource.dart';
 import 'features/admin/data/datasources/audit_log_api_datasource.dart';
 import 'features/admin/data/datasources/super_admin_analytics_api_datasource.dart';
@@ -104,6 +107,7 @@ import 'features/admin_group/domain/usecases/join_superadmin_group_usecase.dart'
 import 'features/admin_group/presentation/bloc/admin_group_bloc.dart';
 import 'core/migration/data_migrator.dart';
 import 'core/services/batch_sync_service.dart';
+import 'core/services/balance_verification_service.dart';
 import 'features/exchanges/data/datasources/exchange_api_datasource.dart';
 import 'features/exchanges/data/repositories/exchange_repository_impl.dart';
 import 'features/exchanges/domain/repositories/exchange_repository.dart';
@@ -112,6 +116,11 @@ import 'features/exchanges/domain/usecases/get_all_exchanges_usecase.dart';
 import 'features/exchanges/domain/usecases/get_exchanges_by_transfer_usecase.dart';
 import 'features/exchanges/domain/usecases/get_transfer_balance_usecase.dart';
 import 'features/exchanges/presentation/bloc/exchange_bloc.dart';
+import 'features/organizations/data/datasources/organizations_api_datasource.dart';
+import 'features/organizations/data/datasources/organizations_cache_datasource.dart';
+import 'features/export/data/datasources/export_api_datasource.dart';
+import 'features/export/presentation/bloc/export_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final sl = GetIt.instance;
 
@@ -134,14 +143,28 @@ Future<void> initializeDependencies() async {
   const secureStorage = FlutterSecureStorage();
   sl.registerSingleton<FlutterSecureStorage>(secureStorage);
 
+  // Shared Preferences
+  final sharedPreferences = await SharedPreferences.getInstance();
+  sl.registerSingleton<SharedPreferences>(sharedPreferences);
+
   // Connectivity
   final connectivity = Connectivity();
   sl.registerSingleton<Connectivity>(connectivity);
 
   // ========== CORE SERVICES ==========
 
-  // Laravel API Services
-  sl.registerLazySingleton<ApiClient>(() => DioApiClient());
+  // Token Manager (must be registered before ApiClient)
+  sl.registerLazySingleton<TokenManager>(
+    () => TokenManager(secureStorage: secureStorage),
+  );
+
+  // Laravel API Services with Bearer Token support
+  sl.registerLazySingleton<ApiClient>(
+    () => DioApiClient(
+      tokenManager: sl<TokenManager>(),
+      // onTokenRefreshFailed callback will be set up by auth service
+    ),
+  );
 
   sl.registerLazySingleton<CacheService>(() => CacheServiceImpl());
 
@@ -175,6 +198,16 @@ Future<void> initializeDependencies() async {
 
   sl.registerLazySingleton<OnboardingService>(() => OnboardingService());
 
+  // Language Service for localization
+  sl.registerLazySingleton<LanguageService>(
+    () => LanguageService(sl<SharedPreferences>()),
+  );
+
+  // Language BLoC
+  sl.registerFactory<LanguageBloc>(
+    () => LanguageBloc(sl<LanguageService>()),
+  );
+
   // Role Service for role-based access control
   sl.registerLazySingleton<RoleService>(
     () => RoleService(authRepository: sl()),
@@ -188,16 +221,22 @@ Future<void> initializeDependencies() async {
   // Initialize connectivity monitoring
   sl<ConnectivityService>().initialize();
 
+  // ========== ORGANIZATIONS FEATURE (PUBLIC ENDPOINTS) ==========
+
+  // Data Sources
+  sl.registerLazySingleton<OrganizationsApiDatasource>(
+    () => OrganizationsApiDatasource(apiClient: sl()),
+  );
+
+  sl.registerLazySingleton<OrganizationsCacheDatasource>(
+    () => OrganizationsCacheDatasource(prefs: sl()),
+  );
+
   // ========== AUTH FEATURE ==========
 
   // Laravel Auth Service
   sl.registerLazySingleton<LaravelAuthService>(
     () => LaravelAuthService(apiClient: sl(), tokenManager: sl()),
-  );
-
-  // Token Manager
-  sl.registerLazySingleton<TokenManager>(
-    () => TokenManager(secureStorage: sl()),
   );
 
   // Data Sources
@@ -267,6 +306,11 @@ Future<void> initializeDependencies() async {
       updateFundBalanceUseCase: sl(),
       roleService: sl(),
     ),
+  );
+
+  // Balance Verification Service
+  sl.registerLazySingleton<BalanceVerificationService>(
+    () => BalanceVerificationService(fundBoxApiDataSource: sl()),
   );
 
   // ========== TRANSFERS FEATURE ==========
@@ -415,12 +459,23 @@ Future<void> initializeDependencies() async {
 
   // Data Sources
   sl.registerLazySingleton<ProfileApiDataSource>(
-    () => ProfileApiDataSourceImpl(apiClient: sl()),
+    () => ProfileApiDataSourceImpl(
+      apiClient: sl(),
+      tokenManager: sl(),
+    ),
+  );
+
+  // Profile Image Upload Service
+  sl.registerLazySingleton<ProfileImageUploadService>(
+    () => ProfileImageUploadService(apiClient: sl()),
   );
 
   // Repositories
   sl.registerLazySingleton<ProfileRepository>(
-    () => ProfileRepositoryImpl(apiDataSource: sl()),
+    () => ProfileRepositoryImpl(
+      apiDataSource: sl(),
+      imageUploadService: sl(),
+    ),
   );
 
   // Use Cases
@@ -586,6 +641,18 @@ Future<void> initializeDependencies() async {
     ),
   );
 
+  // ========== EXPORT FEATURE ==========
+
+  // Data Sources
+  sl.registerLazySingleton<ExportApiDataSource>(
+    () => ExportApiDataSourceImpl(apiClient: sl()),
+  );
+
+  // BLoC
+  sl.registerFactory(
+    () => ExportBloc(exportApiDataSource: sl()),
+  );
+
   // ========== MIGRATION SERVICES ==========
 
   // Sync Service (No-op for Laravel version)
@@ -606,8 +673,6 @@ Future<void> initializeDependencies() async {
 /// This should be called after initializing dependencies but before running the app
 Future<void> restoreAuthToken() async {
   try {
-    print('🔵 [DI] Restoring authentication token...');
-
     final tokenManager = sl<TokenManager>();
     final apiClient = sl<ApiClient>();
 
@@ -618,19 +683,10 @@ Future<void> restoreAuthToken() async {
       if (token != null) {
         // Set token in API client
         apiClient.setAuthToken(token);
-
-        // Get token info for logging
-        final tokenInfo = await tokenManager.getTokenInfo();
-        print('✅ [DI] Token restored successfully');
-        print('🔑 [DI] Token info: $tokenInfo');
-      } else {
-        print('⚠️ [DI] No token found in storage');
       }
-    } else {
-      print('⚠️ [DI] No token stored');
     }
   } catch (e) {
-    print('🔴 [DI] Error restoring token: $e');
     // Don't throw - app should still start even if token restoration fails
+    // Error is logged internally by TokenManager
   }
 }

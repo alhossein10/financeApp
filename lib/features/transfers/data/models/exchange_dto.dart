@@ -39,16 +39,16 @@ class ExchangeDto {
     
     if (amountUsd != null && exchangeRate != null) {
       // New format
-      exchangeRateUsdToSyp = exchangeRate!;
+      exchangeRateUsdToSyp = exchangeRate;
       if (targetCurrency == 'SYP' && amountSyp != null) {
-        convertedAmountSyp = amountSyp!;
+        convertedAmountSyp = amountSyp;
       } else if (targetCurrency == 'TRY' && amountTry != null) {
         // For TRY, we still use convertedAmountSyp field but it represents TRY amount
         // This is a limitation of the current ExchangeDto structure
-        convertedAmountSyp = amountTry!;
+        convertedAmountSyp = amountTry;
       } else {
         // Calculate converted amount from USD amount and rate
-        convertedAmountSyp = amountUsd! * exchangeRate!;
+        convertedAmountSyp = amountUsd * exchangeRate;
       }
     } else {
       // Old format

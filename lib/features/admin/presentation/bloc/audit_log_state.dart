@@ -89,6 +89,13 @@ class AuditLogError extends AuditLogState {
     this.requiresLogin = false,
   });
 
+  /// Check if error is a 403 Forbidden error
+  bool get isForbidden => 
+      message.contains('403') || 
+      message.contains('Forbidden') || 
+      message.contains('Access denied') ||
+      message.contains('Admin privileges required');
+
   @override
   List<Object?> get props => [message, requiresLogin];
 }

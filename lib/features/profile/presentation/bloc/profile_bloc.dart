@@ -24,6 +24,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     on<ProfilePictureUpdateRequested>(_onProfilePictureUpdateRequested);
     on<ProfilePasswordChangeRequested>(_onPasswordChangeRequested);
     on<ProfileDeleteAccountRequested>(_onDeleteAccountRequested);
+    on<ProfilePhotoUploadRequested>(_onPhotoUploadRequested);
+    on<ProfilePhotoDeleteRequested>(_onPhotoDeleteRequested);
   }
 
   Future<void> _onProfileLoadRequested(
@@ -126,6 +128,57 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     result.fold(
       (failure) => emit(ProfileError(message: failure.message)),
       (_) => emit(const ProfileAccountDeleted()),
+    );
+  }
+
+  Future<void> _onPhotoUploadRequested(
+    ProfilePhotoUploadRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(const ProfileLoading());
+
+    final result = await profileRepository.uploadProfilePhoto(event.filePath);
+
+    await result.fold(
+      (failure) async {
+        emit(ProfileError(message: failure.message));
+      },
+      (photoData) async {
+        // Reload profile data to get updated user info with photo URL
+        final profileResult = await getUserProfileUseCase();
+        profileResult.fold(
+          (failure) => emit(ProfileError(message: failure.message)),
+          (profileData) => emit(ProfilePhotoUploadSuccess(
+            profileData: profileData,
+            photoUrl: photoData['profile_photo_url'] ?? '',
+          )),
+        );
+      },
+    );
+  }
+
+  Future<void> _onPhotoDeleteRequested(
+    ProfilePhotoDeleteRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(const ProfileLoading());
+
+    final result = await profileRepository.deleteProfilePhoto();
+
+    await result.fold(
+      (failure) async {
+        emit(ProfileError(message: failure.message));
+      },
+      (_) async {
+        // Reload profile data to get updated user info without photo
+        final profileResult = await getUserProfileUseCase();
+        profileResult.fold(
+          (failure) => emit(ProfileError(message: failure.message)),
+          (profileData) => emit(ProfilePhotoDeleteSuccess(
+            profileData: profileData,
+          )),
+        );
+      },
     );
   }
 }

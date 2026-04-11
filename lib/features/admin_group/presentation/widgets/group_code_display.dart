@@ -10,12 +10,12 @@ class GroupCodeDisplay extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
 
   const GroupCodeDisplay({
-    Key? key,
+    super.key,
     required this.groupCode,
     this.onCopy,
     this.showCopyButton = true,
     this.padding,
-  }) : super(key: key);
+  });
 
   @override
   State<GroupCodeDisplay> createState() => _GroupCodeDisplayState();
@@ -48,7 +48,7 @@ class _GroupCodeDisplayState extends State<GroupCodeDisplay> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            AppLocalizations.of(context).translate('admin_group.code_copied') ??
+            AppLocalizations.of(context)?.codeCopied ??
                 'Group code copied to clipboard',
           ),
           duration: const Duration(seconds: 2),
@@ -79,7 +79,7 @@ class _GroupCodeDisplayState extends State<GroupCodeDisplay> {
         children: [
           // Label
           Text(
-            AppLocalizations.of(context).translate('admin_group.group_code') ??
+            AppLocalizations.of(context)?.groupCode ??
                 'Group Code',
             style: theme.textTheme.titleSmall?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.7),
@@ -143,8 +143,8 @@ class _GroupCodeDisplayState extends State<GroupCodeDisplay> {
                             const SizedBox(width: 8),
                             Text(
                               _showCopiedMessage
-                                  ? (AppLocalizations.of(context).translate('admin_group.copied') ?? 'Copied!')
-                                  : (AppLocalizations.of(context).translate('admin_group.copy_code') ?? 'Copy'),
+                                  ? (AppLocalizations.of(context)?.copied ?? 'Copied!')
+                                  : (AppLocalizations.of(context)?.copyCode ?? 'Copy'),
                               style: theme.textTheme.labelLarge?.copyWith(
                                 color: theme.colorScheme.onPrimary,
                                 fontWeight: FontWeight.w600,
@@ -163,7 +163,7 @@ class _GroupCodeDisplayState extends State<GroupCodeDisplay> {
           // Helper text
           const SizedBox(height: 12),
           Text(
-            AppLocalizations.of(context).translate('admin_group.share_with_team') ??
+            AppLocalizations.of(context)?.shareWithTeam ??
                 'Share this code with your team members',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.6),

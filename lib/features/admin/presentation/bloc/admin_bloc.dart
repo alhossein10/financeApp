@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/api/api_exception.dart';
-import '../../../../core/models/sync_status.dart';
 import '../../../../core/utils/error_handler.dart';
 import '../../../../core/services/role_service.dart';
 import '../../../../features/auth/domain/usecases/get_current_user_usecase.dart';

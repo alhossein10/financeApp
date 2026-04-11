@@ -30,10 +30,23 @@ class PdfExportHelper {
     return (regular: regularFont, bold: boldFont);
   }
   
-  /// Get translations - defaults to English locale for PDF exports
+  /// Get translations - defaults to English for PDF exports
+  /// Note: For PDFs, we use hardcoded English strings for consistency
   static String _getTranslation(String key, {String locale = 'en'}) {
-    final localizations = AppLocalizations(Locale(locale));
-    return localizations.translate(key);
+    // Map of translation keys to English strings
+    final translations = {
+      'date': 'Date',
+      'description': 'Description',
+      'amount': 'Amount',
+      'total': 'Total',
+      'recipient': 'Recipient',
+      'invoice': 'Invoice',
+      'expenses': 'Expenses',
+      'transfers': 'Transfers',
+      'incoming': 'Incoming',
+      'cash_transactions': 'Cash Transactions',
+    };
+    return translations[key] ?? key;
   }
   static Future<void> exportCashTransactions({
     required List<TransferRecord> transfers,
@@ -330,7 +343,7 @@ class PdfExportHelper {
                       errorDetails += ' - $errorStr';
                       // Limit error message length
                       if (errorDetails.length > 500) {
-                        errorDetails = errorDetails.substring(0, 500) + '...';
+                        errorDetails = '${errorDetails.substring(0, 500)}...';
                       }
                     }
                   }
@@ -359,17 +372,13 @@ class PdfExportHelper {
         }
 
         // Add page with the image (image is guaranteed to be non-null here due to check above)
+        // Note: Description removed for invoice export (admin and user flavors only)
         doc.addPage(
           pw.Page(
             pageFormat: PdfPageFormat.a4,
             build: (ctx) => pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text(
-                  expense.description,
-                  style: pw.TextStyle(font: arabicFont, fontSize: 14),
-                ),
-                pw.SizedBox(height: 10),
                 pw.Text(
                   '${expense.expenseDate.day}/${expense.expenseDate.month}/${expense.expenseDate.year}',
                   style: pw.TextStyle(font: arabicFont, fontSize: 10),
@@ -421,6 +430,7 @@ class PdfExportHelper {
     final doc = pw.Document();
 
     final sypSum = exchanges.fold(0.0, (sum, e) => sum + (e.amountSyp ?? 0.0));
+    final trySum = exchanges.fold(0.0, (sum, e) => sum + (e.amountTry ?? 0.0));
     final usdSum = exchanges.fold(0.0, (sum, e) => sum + e.amountUsd);
 
     doc.addPage(
@@ -442,7 +452,7 @@ class PdfExportHelper {
             child: pw.Table(
               border: pw.TableBorder.all(width: 0.5),
               children: [
-                // Header
+                // Header - USD, SYP, TRY, Rate, Date, Recipient
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                   children: [
@@ -453,6 +463,10 @@ class PdfExportHelper {
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
                       child: pw.Text(_getTranslation('syp'), style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(_getTranslation('try'), style: pw.TextStyle(font: arabicFont, fontSize: 10)),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
@@ -479,6 +493,10 @@ class PdfExportHelper {
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text((e.amountSyp ?? 0.0).toStringAsFixed(0), style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text((e.amountTry ?? 0.0).toStringAsFixed(0), style: pw.TextStyle(font: arabicFont, fontSize: 10)),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
@@ -512,6 +530,7 @@ class PdfExportHelper {
                 pw.SizedBox(height: 10),
                 pw.Text('${_getTranslation('total')} ${_getTranslation('usd')}: ${usdSum.toStringAsFixed(2)}', style: pw.TextStyle(font: arabicFont, fontSize: 12)),
                 pw.Text('${_getTranslation('total')} ${_getTranslation('syp')}: ${sypSum.toStringAsFixed(0)}', style: pw.TextStyle(font: arabicFont, fontSize: 12)),
+                pw.Text('${_getTranslation('total')} ${_getTranslation('try')}: ${trySum.toStringAsFixed(0)}', style: pw.TextStyle(font: arabicFont, fontSize: 12)),
               ],
             ),
           ),

@@ -2,5 +2,5 @@
 
 // Admin flavor configuration
 PRODUCT_BUNDLE_IDENTIFIER = com.app.finance.admin
-APP_DISPLAY_NAME = Finance Admin
+APP_DISPLAY_NAME = الإدارة المالية (أدمن)
 FLUTTER_TARGET = lib/main_admin.dart

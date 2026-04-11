@@ -34,7 +34,7 @@ class OrganizationDropdown extends StatelessWidget {
     }
 
     return DropdownButtonFormField<int>(
-      value: selectedOrganizationId,
+      initialValue: selectedOrganizationId,
       decoration: InputDecoration(
         labelText: 'المنظمة',
         errorText: errorText,

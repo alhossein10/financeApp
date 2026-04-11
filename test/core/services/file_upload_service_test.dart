@@ -682,7 +682,7 @@ void main() {
 
     test('should handle very long file paths', () async {
       // Arrange
-      final longPath = '/uploads/' + 'a' * 500 + '.jpg';
+      final longPath = '/uploads/${'a' * 500}.jpg';
 
       when(mockApiClient.delete(
         any,

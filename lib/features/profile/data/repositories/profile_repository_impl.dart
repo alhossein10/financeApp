@@ -1,7 +1,8 @@
+import 'dart:io';
 import 'package:dartz/dartz.dart';
 import '../../../../core/api/api_exception.dart';
-import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/services/profile_image_upload_service.dart';
 import '../../../auth/domain/entities/user.dart';
 import '../../domain/entities/user_statistics.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -10,8 +11,12 @@ import '../datasources/profile_api_datasource.dart';
 /// Implementation of profile repository
 class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileApiDataSource apiDataSource;
+  final ProfileImageUploadService imageUploadService;
 
-  ProfileRepositoryImpl({required this.apiDataSource});
+  ProfileRepositoryImpl({
+    required this.apiDataSource,
+    required this.imageUploadService,
+  });
 
   @override
   Future<Either<Failure, UserStatistics>> getUserStatistics(int userId) async {
@@ -60,13 +65,28 @@ class ProfileRepositoryImpl implements ProfileRepository {
     required String imagePath,
   }) async {
     try {
-      // Note: Profile picture upload will be implemented when file upload is integrated
-      // For now, return the current user profile
-      final user = await apiDataSource.getProfile();
-      return Right(user);
+      // Validate image file
+      final imageFile = File(imagePath);
+      if (!await imageFile.exists()) {
+        return const Left(ValidationFailure('Image file does not exist'));
+      }
+
+      if (!imageUploadService.isValidImageFile(imageFile)) {
+        return const Left(ValidationFailure('Invalid image file format'));
+      }
+
+      // Upload profile image
+      final imageUrl = await imageUploadService.uploadProfileImage(imageFile);
+
+      // Update profile with new image URL via API
+      final updatedUser = await apiDataSource.updateProfileImage(imageUrl);
+      
+      return Right(updatedUser);
     } on ApiException catch (e) {
       if (e.statusCode == 401) {
         return Left(UnauthorizedFailure());
+      } else if (e.statusCode == 422) {
+        return Left(ValidationFailure(e.message));
       }
       return Left(ServerFailure(e.message));
     } catch (e) {
@@ -75,6 +95,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   /// Change user password
+  @override
   Future<Either<Failure, void>> changePassword({
     required String currentPassword,
     required String newPassword,
@@ -98,6 +119,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   /// Delete user account
+  @override
   Future<Either<Failure, void>> deleteAccount() async {
     try {
       await apiDataSource.deleteAccount();
@@ -109,6 +131,40 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure('Failed to delete account: ${e.toString()}'));
+    }
+  }
+
+  /// Upload profile photo
+  @override
+  Future<Either<Failure, Map<String, String>>> uploadProfilePhoto(String filePath) async {
+    try {
+      final photoData = await apiDataSource.uploadProfilePhoto(filePath);
+      return Right(photoData);
+    } on ApiException catch (e) {
+      if (e.statusCode == 401) {
+        return Left(UnauthorizedFailure());
+      } else if (e.statusCode == 422) {
+        return Left(ValidationFailure(e.message));
+      }
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to upload profile photo: ${e.toString()}'));
+    }
+  }
+
+  /// Delete profile photo
+  @override
+  Future<Either<Failure, void>> deleteProfilePhoto() async {
+    try {
+      await apiDataSource.deleteProfilePhoto();
+      return const Right(null);
+    } on ApiException catch (e) {
+      if (e.statusCode == 401) {
+        return Left(UnauthorizedFailure());
+      }
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to delete profile photo: ${e.toString()}'));
     }
   }
 }

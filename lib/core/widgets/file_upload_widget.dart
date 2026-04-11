@@ -16,7 +16,7 @@ class FileUploadWidget extends StatefulWidget {
   final bool allowDocuments;
 
   const FileUploadWidget({
-    Key? key,
+    super.key,
     required this.fileType,
     required this.onFileUploaded,
     this.onError,
@@ -24,7 +24,7 @@ class FileUploadWidget extends StatefulWidget {
     this.allowCamera = true,
     this.allowGallery = true,
     this.allowDocuments = true,
-  }) : super(key: key);
+  });
 
   @override
   State<FileUploadWidget> createState() => _FileUploadWidgetState();

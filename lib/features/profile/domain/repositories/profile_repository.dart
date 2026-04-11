@@ -29,4 +29,10 @@ abstract class ProfileRepository {
   
   /// Delete user account
   Future<Either<Failure, void>> deleteAccount();
+
+  /// Upload profile photo
+  Future<Either<Failure, Map<String, String>>> uploadProfilePhoto(String filePath);
+
+  /// Delete profile photo
+  Future<Either<Failure, void>> deleteProfilePhoto();
 }

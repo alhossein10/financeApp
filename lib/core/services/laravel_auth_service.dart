@@ -3,10 +3,12 @@ import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../api/models/auth_response.dart';
 import '../api/models/user_dto.dart';
-import '../config/api_config.dart';
 import '../../features/auth/domain/entities/user.dart';
 import '../../features/auth/domain/entities/registration_result.dart';
+import '../utils/secure_logger.dart';
 import 'token_manager.dart';
+
+const String _logTag = 'AUTH';
 
 /// Laravel Authentication Service
 /// Handles user authentication with Laravel backend
@@ -21,18 +23,24 @@ class LaravelAuthService {
         _tokenManager = tokenManager;
 
   /// Register a new user
-  /// 
+  ///
+  /// For SuperAdmin registration:
+  /// - Creates a new SuperAdmin group automatically
+  /// - Returns SuperAdmin group code in RegistrationResult for sharing with admins
+  /// - adminGroupName is required for SuperAdmin
+  /// - organizationName and departmentName are optional
+  ///
   /// For admin registration:
-  /// - Creates a new admin group automatically
+  /// - Creates a new admin group automatically (or joins SuperAdmin group if superAdminGroupCode provided)
   /// - Returns group code in RegistrationResult for sharing with team
   /// - organizationName and departmentName are optional
-  /// 
+  ///
   /// For user registration:
   /// - Requires valid groupCode to join admin's group
   /// - organizationName and departmentName are optional
-  /// 
+  ///
   /// Returns RegistrationResult with user and optional group code on success
-  /// 
+  ///
   /// Throws ApiException with specific messages for:
   /// - Invalid group code: "The selected group code is invalid"
   /// - Missing group code: "The group code field is required"
@@ -45,17 +53,14 @@ class LaravelAuthService {
     required String password,
     String? organizationName,
     String? departmentName,
-    String? groupCode, // Admin group code (for users joining admin groups)
-    String? superAdminGroupCode, // SuperAdmin group code (for admins joining SuperAdmin groups)
+    String? adminGroupName,
+    String? groupCode,
+    String? superAdminGroupCode,
     String role = 'user',
   }) async {
     try {
-      print('🔵 [AUTH] Starting registration for: $email with role: $role');
-      print('🔵 [AUTH] Organization Name: $organizationName, Department Name: $departmentName');
-      print('🔵 [AUTH] Group Code: $groupCode');
-      print('🔵 [AUTH] SuperAdmin Group Code: $superAdminGroupCode');
-      print('🔵 [AUTH] API URL: ${ApiConfig.apiUrl}/auth/register');
-      
+      SecureLogger.debug(_logTag, 'Starting registration with role: $role');
+
       // Build request body
       final Map<String, dynamic> requestBody = {
         'name': name,
@@ -64,67 +69,68 @@ class LaravelAuthService {
         'password_confirmation': password,
         'role': role,
       };
-      
+
       // Add optional fields if provided
       if (organizationName != null && organizationName.isNotEmpty) {
         requestBody['organization_name'] = organizationName;
       }
-      
+
       if (departmentName != null && departmentName.isNotEmpty) {
         requestBody['department_name'] = departmentName;
       }
-      
+
+      // Add SuperAdmin group name for SuperAdmin registration
+      if (adminGroupName != null && adminGroupName.isNotEmpty) {
+        requestBody['admin_group_name'] = adminGroupName;
+      }
+
       if (groupCode != null && groupCode.isNotEmpty) {
         requestBody['group_code'] = groupCode;
       }
-      
+
       // Add SuperAdmin group code for Admin registration
       if (superAdminGroupCode != null && superAdminGroupCode.isNotEmpty) {
         requestBody['super_admin_group_code'] = superAdminGroupCode;
       }
-      
-      print('🔵 [AUTH] Request body: $requestBody');
-      
+
+      SecureLogger.request(_logTag, 'POST', '/auth/register');
+
       final response = await _apiClient.post(
         '/auth/register',
         body: requestBody,
       ).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          print('🔴 [AUTH] Request timed out after 15 seconds');
+          SecureLogger.error(_logTag, 'Request timed out after 15 seconds');
           throw ApiException(
             statusCode: 0,
             message: 'Connection timeout. Please check:\n'
-                '1. Laravel is running\n'
-                '2. IP address is correct\n'
+                '1. Server is running\n'
+                '2. Network connection is available\n'
                 '3. Firewall is not blocking',
           );
         },
       );
 
-      print('🟢 [AUTH] Registration response received: ${response.statusCode}');
-      print('🟢 [AUTH] Response data type: ${response.data.runtimeType}');
-      print('🟢 [AUTH] Response data: ${response.data}');
+      SecureLogger.response(_logTag, response.statusCode);
 
       // Check if response is successful
       if (response.statusCode == 422) {
-        // Validation error - show the actual errors
-        print('🔴 [AUTH] Validation error (422)');
-        print('🔴 [AUTH] Validation errors: ${response.data}');
-        
+        SecureLogger.error(_logTag, 'Validation error (422)');
+
         // Extract error messages with special handling for group code errors
         String errorMessage = 'Validation failed';
         Map<String, dynamic>? validationErrors;
-        
+
         if (response.data is Map && response.data['errors'] != null) {
           validationErrors = response.data['errors'] as Map<String, dynamic>;
-          
+
           // Check for specific group code validation errors
           if (validationErrors.containsKey('group_code')) {
             final groupCodeErrors = validationErrors['group_code'];
             if (groupCodeErrors is List && groupCodeErrors.isNotEmpty) {
               final firstError = groupCodeErrors.first.toString();
-              
+
               // Map backend error messages to user-friendly messages
               if (firstError.contains('invalid') || firstError.contains('does not exist')) {
                 errorMessage = 'The selected group code is invalid';
@@ -146,7 +152,7 @@ class LaravelAuthService {
           }
         } else if (response.data is Map && response.data['message'] != null) {
           errorMessage = response.data['message'].toString();
-          
+
           // Check message for group code specific errors
           if (errorMessage.contains('group code') && errorMessage.contains('invalid')) {
             errorMessage = 'The selected group code is invalid';
@@ -156,21 +162,19 @@ class LaravelAuthService {
             errorMessage = 'Admins cannot join other groups';
           }
         }
-        
+
         throw ApiException(
           statusCode: 422,
           message: errorMessage,
           errors: validationErrors,
         );
       } else if (response.statusCode == 400) {
-        // Bad request - may contain group code specific errors
-        print('🔴 [AUTH] Bad request (400)');
-        print('🔴 [AUTH] Response data: ${response.data}');
-        
+        SecureLogger.error(_logTag, 'Bad request (400)');
+
         String errorMessage = 'Invalid request';
         if (response.data is Map && response.data['message'] != null) {
           errorMessage = response.data['message'].toString();
-          
+
           // Check for group code specific errors in message
           if (errorMessage.contains('already in a group')) {
             errorMessage = 'You are already in a group';
@@ -178,13 +182,13 @@ class LaravelAuthService {
             errorMessage = 'Admins cannot join other groups';
           }
         }
-        
+
         throw ApiException(
           statusCode: 400,
           message: errorMessage,
         );
       } else if (response.statusCode != 200 && response.statusCode != 201) {
-        print('🔴 [AUTH] Unexpected status code: ${response.statusCode}');
+        SecureLogger.error(_logTag, 'Unexpected status code: ${response.statusCode}');
         throw ApiException(
           statusCode: response.statusCode ?? 0,
           message: 'Registration failed with status ${response.statusCode}',
@@ -192,9 +196,9 @@ class LaravelAuthService {
       }
 
       final authResponse = AuthResponse.fromJson(response.data);
-      
-      print('🔵 [AUTH] Storing registration token...');
-      
+
+      SecureLogger.debug(_logTag, 'Storing registration token...');
+
       // Store token in secure storage
       await _tokenManager.saveToken(
         token: authResponse.token,
@@ -203,29 +207,10 @@ class LaravelAuthService {
       );
 
       // Set token in API client for subsequent requests
-      // This ensures all future API calls include the Bearer token
       _apiClient.setAuthToken(authResponse.token);
 
-      print('✅ [AUTH] Registration token stored and set in API client');
-      print('🔑 [AUTH] Token type: ${authResponse.tokenType}');
-      print('👤 [AUTH] User role: ${authResponse.user.role}');
-      if (authResponse.expiresAt != null) {
-        print('⏰ [AUTH] Token expires at: ${authResponse.expiresAt}');
-      }
-      if (authResponse.superAdminGroupCode != null) {
-        print('🔑 [AUTH] SuperAdmin group code generated: ${authResponse.superAdminGroupCode}');
-        print('📋 [AUTH] SuperAdmin group code should be displayed for sharing with admins');
-      } else if (authResponse.groupCode != null) {
-        print('🔑 [AUTH] Admin group code generated: ${authResponse.groupCode}');
-        print('📋 [AUTH] Group code should be displayed to admin for sharing');
-      } else if (role == 'admin') {
-        print('⚠️ [AUTH] Warning: Admin registered but no group code in response');
-      } else if (role == 'superAdmin') {
-        print('⚠️ [AUTH] Warning: SuperAdmin registered but no group code in response');
-      } else if (groupCode != null) {
-        print('✅ [AUTH] User successfully joined group with code: $groupCode');
-      }
-      
+      SecureLogger.success(_logTag, 'Registration completed for role: ${authResponse.user.role}');
+
       return RegistrationResult(
         user: authResponse.user.toEntity(),
         groupCode: authResponse.groupCode,
@@ -233,19 +218,12 @@ class LaravelAuthService {
         adminGroupName: authResponse.adminGroupName,
       );
     } on ApiException {
-      // Re-throw ApiException as-is (from our custom error handling above)
       rethrow;
     } on DioException catch (e) {
-      print('🔴 [AUTH] DioException during registration');
-      print('🔴 [AUTH] Type: ${e.type}');
-      print('🔴 [AUTH] Message: ${e.message}');
-      print('🔴 [AUTH] Response: ${e.response?.data}');
-      print('🔴 [AUTH] Status code: ${e.response?.statusCode}');
+      SecureLogger.error(_logTag, 'DioException during registration', e);
       throw ApiException.fromDioException(e);
     } catch (e, stackTrace) {
-      print('🔴 [AUTH] Unexpected error during registration: $e');
-      print('🔴 [AUTH] Error type: ${e.runtimeType}');
-      print('🔴 [AUTH] Stack trace: $stackTrace');
+      SecureLogger.error(_logTag, 'Unexpected error during registration', e, stackTrace);
       throw ApiException(
         statusCode: 0,
         message: 'Registration failed: ${e.toString()}',
@@ -261,8 +239,9 @@ class LaravelAuthService {
     required String password,
   }) async {
     try {
-      print('🔵 [AUTH] Starting login for: $email');
-      
+      SecureLogger.debug(_logTag, 'Starting login...');
+      SecureLogger.request(_logTag, 'POST', '/auth/login');
+
       final response = await _apiClient.post(
         '/auth/login',
         body: {
@@ -271,13 +250,10 @@ class LaravelAuthService {
         },
       );
 
-      print('🟢 [AUTH] Login response received: ${response.statusCode}');
-      print('🟢 [AUTH] Response data: ${response.data}');
+      SecureLogger.response(_logTag, response.statusCode);
 
       final authResponse = AuthResponse.fromJson(response.data);
-      
-      print('🔵 [AUTH] Storing login token...');
-      
+
       // Store token in secure storage
       await _tokenManager.saveToken(
         token: authResponse.token,
@@ -286,24 +262,16 @@ class LaravelAuthService {
       );
 
       // Set token in API client for subsequent requests
-      // This ensures all future API calls include the Bearer token
       _apiClient.setAuthToken(authResponse.token);
 
-      print('✅ [AUTH] Login token stored and set in API client');
-      print('🔑 [AUTH] Token type: ${authResponse.tokenType}');
-      if (authResponse.expiresAt != null) {
-        print('⏰ [AUTH] Token expires at: ${authResponse.expiresAt}');
-      }
-      
+      SecureLogger.success(_logTag, 'Login completed');
+
       return authResponse.user.toEntity();
     } on DioException catch (e) {
-      print('🔴 [AUTH] DioException during login: ${e.message}');
-      print('🔴 [AUTH] Response: ${e.response?.data}');
-      print('🔴 [AUTH] Status code: ${e.response?.statusCode}');
+      SecureLogger.error(_logTag, 'DioException during login', e);
       throw ApiException.fromDioException(e);
     } catch (e, stackTrace) {
-      print('🔴 [AUTH] Unexpected error during login: $e');
-      print('🔴 [AUTH] Stack trace: $stackTrace');
+      SecureLogger.error(_logTag, 'Unexpected error during login', e, stackTrace);
       throw ApiException(
         statusCode: 0,
         message: 'Login failed: ${e.toString()}',
@@ -311,32 +279,37 @@ class LaravelAuthService {
     }
   }
 
+  // Flag to prevent multiple simultaneous logout calls
+  bool _isLoggingOut = false;
+
   /// Logout current user
   /// Revokes token on server and clears local storage
   /// Always clears local tokens even if server call fails
   Future<void> logout() async {
-    print('🔵 [AUTH] Starting logout process...');
-    
+    // Prevent multiple simultaneous logout calls
+    if (_isLoggingOut) {
+      SecureLogger.warning(_logTag, 'Logout already in progress, skipping duplicate call');
+      return;
+    }
+
+    _isLoggingOut = true;
+    SecureLogger.debug(_logTag, 'Starting logout process...');
+
     try {
-      // Try to revoke token on server
-      print('🔵 [AUTH] Calling logout API...');
+      SecureLogger.request(_logTag, 'POST', '/auth/logout');
       await _apiClient.post('/auth/logout');
-      print('✅ [AUTH] Logout API call successful');
+      SecureLogger.success(_logTag, 'Logout API call successful');
     } on DioException catch (e) {
-      // Log error but continue with local logout
-      print('⚠️ [AUTH] Logout API call failed: ${e.message}');
-      print('⚠️ [AUTH] Status code: ${e.response?.statusCode}');
+      SecureLogger.warning(_logTag, 'Logout API call failed: ${e.response?.statusCode}');
     } catch (e) {
-      print('⚠️ [AUTH] Logout error: ${e.toString()}');
+      SecureLogger.warning(_logTag, 'Logout error occurred');
     } finally {
       // Always clear local tokens regardless of API call result
-      print('🔵 [AUTH] Clearing local tokens...');
       await _tokenManager.clearTokens();
-      
-      // Clear token from API client
       _apiClient.clearAuthToken();
-      
-      print('✅ [AUTH] Logout complete - all tokens cleared');
+
+      SecureLogger.success(_logTag, 'Logout complete - all tokens cleared');
+      _isLoggingOut = false;
     }
   }
 
@@ -345,47 +318,43 @@ class LaravelAuthService {
   /// Throws ApiException on failure
   Future<User> getCurrentUser() async {
     try {
-      print('🔵 [AUTH] Fetching current user from /auth/me...');
-      
+      SecureLogger.debug(_logTag, 'Fetching current user...');
+
       // Ensure token is set in API client before making request
       final token = await _tokenManager.getToken();
       if (token != null) {
         _apiClient.setAuthToken(token);
-        print('🔵 [AUTH] Token restored to API client');
       } else {
-        print('⚠️ [AUTH] No token available');
+        SecureLogger.warning(_logTag, 'No token available');
         throw ApiException(
           statusCode: 401,
           message: 'No authentication token available',
         );
       }
-      
+
+      SecureLogger.request(_logTag, 'GET', '/auth/me');
       final response = await _apiClient.get('/auth/me');
-      
-      print('🟢 [AUTH] Response status: ${response.statusCode}');
-      print('🟢 [AUTH] Response data type: ${response.data.runtimeType}');
-      print('🟢 [AUTH] Response data: ${response.data}');
-      
+
+      SecureLogger.response(_logTag, response.statusCode);
+
       final userDto = UserDto.fromJson(response.data);
       final user = userDto.toEntity();
-      
-      print('✅ [AUTH] User fetched: ${user.email}, role: ${user.role}');
+
+      SecureLogger.success(_logTag, 'User fetched, role: ${user.role}');
       return user;
     } on DioException catch (e) {
-      print('🔴 [AUTH] DioException getting current user: ${e.message}');
-      print('🔴 [AUTH] Response: ${e.response?.data}');
-      
+      SecureLogger.error(_logTag, 'DioException getting current user', e);
+
       // If 401, clear tokens as they're invalid
       if (e.response?.statusCode == 401) {
-        print('🔴 [AUTH] Token invalid, clearing...');
+        SecureLogger.warning(_logTag, 'Token invalid, clearing...');
         await _tokenManager.clearTokens();
         _apiClient.clearAuthToken();
       }
-      
+
       throw ApiException.fromDioException(e);
     } catch (e, stackTrace) {
-      print('🔴 [AUTH] Error getting current user: $e');
-      print('🔴 [AUTH] Stack trace: $stackTrace');
+      SecureLogger.error(_logTag, 'Error getting current user', e, stackTrace);
       throw ApiException(
         statusCode: 0,
         message: 'Failed to get current user: ${e.toString()}',
@@ -398,33 +367,31 @@ class LaravelAuthService {
   /// Throws ApiException on failure
   Future<User> refreshToken() async {
     try {
-      print('🔄 [AUTH] Refreshing authentication token...');
+      SecureLogger.debug(_logTag, 'Refreshing authentication token...');
+      SecureLogger.request(_logTag, 'POST', '/auth/refresh');
+
       final response = await _apiClient.post('/auth/refresh');
       final authResponse = AuthResponse.fromJson(response.data);
-      
-      print('🔄 [AUTH] Token refresh response received');
-      print('🔄 [AUTH] New token: ${authResponse.token.substring(0, 20)}...');
-      
+
       // Store new token in TokenManager
       await _tokenManager.saveToken(
         token: authResponse.token,
         tokenType: authResponse.tokenType,
         expiresAt: authResponse.expiresAt,
       );
-      
-      // IMPORTANT: Update token on ApiClient so it's used for subsequent requests
+
+      // Update token on ApiClient
       _apiClient.setAuthToken(authResponse.token);
-      print('✅ [AUTH] Token saved to TokenManager and set on ApiClient');
+      SecureLogger.success(_logTag, 'Token refreshed successfully');
 
       return authResponse.user.toEntity();
     } on DioException catch (e) {
-      print('🔴 [AUTH] Token refresh failed with DioException: ${e.message}');
-      // If refresh fails, clear tokens
+      SecureLogger.error(_logTag, 'Token refresh failed', e);
       await _tokenManager.clearTokens();
       _apiClient.clearAuthToken();
       throw ApiException.fromDioException(e);
     } catch (e) {
-      print('🔴 [AUTH] Token refresh failed: $e');
+      SecureLogger.error(_logTag, 'Token refresh failed', e);
       await _tokenManager.clearTokens();
       _apiClient.clearAuthToken();
       throw ApiException(
@@ -453,35 +420,33 @@ class LaravelAuthService {
     try {
       // Check if token needs refresh before validation
       if (await _tokenManager.needsRefresh()) {
-        print('🔄 [AUTH] Token needs refresh, attempting refresh...');
+        SecureLogger.debug(_logTag, 'Token needs refresh, attempting refresh...');
         try {
           await refreshToken();
-          print('✅ [AUTH] Token refreshed successfully');
+          SecureLogger.success(_logTag, 'Token refreshed successfully');
         } catch (e) {
-          print('🔴 [AUTH] Token refresh failed: $e');
+          SecureLogger.error(_logTag, 'Token refresh failed', e);
           // Continue with validation even if refresh fails
-          // Server will return 401 if token is invalid
         }
       }
-      
+
       // Validate with server
       await getCurrentUser();
-      
+
       // Mark token as validated
       await _tokenManager.markAsValidated();
-      
-      print('✅ [AUTH] Token validated successfully');
+
+      SecureLogger.success(_logTag, 'Token validated successfully');
       return true;
     } on ApiException catch (e) {
       if (e.statusCode == 401) {
-        print('🔴 [AUTH] Token validation failed: Unauthorized');
-        // Clear invalid token
+        SecureLogger.warning(_logTag, 'Token validation failed: Unauthorized');
         await _tokenManager.clearTokens();
         _apiClient.clearAuthToken();
       }
       return false;
     } catch (e) {
-      print('🔴 [AUTH] Token validation error: $e');
+      SecureLogger.error(_logTag, 'Token validation error', e);
       return false;
     }
   }
@@ -498,16 +463,16 @@ class LaravelAuthService {
   Future<bool> autoRefreshToken() async {
     try {
       if (!await needsTokenRefresh()) {
-        print('✅ [AUTH] Token doesn\'t need refresh');
+        SecureLogger.debug(_logTag, 'Token doesn\'t need refresh');
         return true;
       }
-      
-      print('🔄 [AUTH] Auto-refreshing token...');
+
+      SecureLogger.debug(_logTag, 'Auto-refreshing token...');
       await refreshToken();
-      print('✅ [AUTH] Token auto-refreshed successfully');
+      SecureLogger.success(_logTag, 'Token auto-refreshed successfully');
       return true;
     } catch (e) {
-      print('🔴 [AUTH] Auto-refresh failed: $e');
+      SecureLogger.error(_logTag, 'Auto-refresh failed', e);
       return false;
     }
   }
@@ -516,13 +481,17 @@ class LaravelAuthService {
   /// Sends reset link to user's email
   Future<void> forgotPassword(String email) async {
     try {
+      SecureLogger.request(_logTag, 'POST', '/auth/forgot-password');
       await _apiClient.post(
         '/auth/forgot-password',
         body: {'email': email},
       );
+      SecureLogger.success(_logTag, 'Password reset email sent');
     } on DioException catch (e) {
+      SecureLogger.error(_logTag, 'Password reset request failed', e);
       throw ApiException.fromDioException(e);
     } catch (e) {
+      SecureLogger.error(_logTag, 'Password reset request failed', e);
       throw ApiException(
         statusCode: 0,
         message: 'Password reset request failed: ${e.toString()}',
@@ -538,6 +507,7 @@ class LaravelAuthService {
     required String password,
   }) async {
     try {
+      SecureLogger.request(_logTag, 'POST', '/auth/reset-password');
       await _apiClient.post(
         '/auth/reset-password',
         body: {
@@ -547,9 +517,12 @@ class LaravelAuthService {
           'password_confirmation': password,
         },
       );
+      SecureLogger.success(_logTag, 'Password reset successful');
     } on DioException catch (e) {
+      SecureLogger.error(_logTag, 'Password reset failed', e);
       throw ApiException.fromDioException(e);
     } catch (e) {
+      SecureLogger.error(_logTag, 'Password reset failed', e);
       throw ApiException(
         statusCode: 0,
         message: 'Password reset failed: ${e.toString()}',
@@ -564,6 +537,7 @@ class LaravelAuthService {
     required String newPassword,
   }) async {
     try {
+      SecureLogger.request(_logTag, 'PUT', '/profile/password');
       await _apiClient.put(
         '/profile/password',
         body: {
@@ -572,9 +546,12 @@ class LaravelAuthService {
           'password_confirmation': newPassword,
         },
       );
+      SecureLogger.success(_logTag, 'Password changed successfully');
     } on DioException catch (e) {
+      SecureLogger.error(_logTag, 'Password change failed', e);
       throw ApiException.fromDioException(e);
     } catch (e) {
+      SecureLogger.error(_logTag, 'Password change failed', e);
       throw ApiException(
         statusCode: 0,
         message: 'Password change failed: ${e.toString()}',

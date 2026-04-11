@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/services/filter_persistence_service.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/logout_usecase.dart';
@@ -91,6 +92,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         confirmPassword: event.confirmPassword,
         organizationName: event.organizationName,
         departmentName: event.departmentName,
+        adminGroupName: event.adminGroupName,
         groupCode: event.groupCode,
         superAdminGroupCode: event.superAdminGroupCode,
         role: event.role,
@@ -129,6 +131,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
+
+    // Clear all persisted filters on logout
+    // Requirement: 26.5
+    FilterPersistenceService().clearAllFilters();
 
     final result = await logoutUseCase();
 

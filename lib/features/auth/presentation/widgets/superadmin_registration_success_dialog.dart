@@ -1,228 +1,252 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../../l10n/app_localizations.dart';
 
-/// Dialog displayed after successful SuperAdmin registration showing the generated group code
+/// Dialog shown after successful SuperAdmin registration
+/// Displays the super_admin_group_code prominently with copy functionality
 class SuperAdminRegistrationSuccessDialog extends StatelessWidget {
-  final String groupCode;
-  final String adminGroupName;
+  final String superAdminGroupCode;
+  final String? adminGroupName;
+  final VoidCallback onContinue;
 
   const SuperAdminRegistrationSuccessDialog({
     super.key,
-    required this.groupCode,
-    required this.adminGroupName,
+    required this.superAdminGroupCode,
+    this.adminGroupName,
+    required this.onContinue,
   });
 
-  /// Show the SuperAdmin registration success dialog
+  /// Show the dialog
   static Future<void> show({
     required BuildContext context,
-    required String groupCode,
-    required String adminGroupName,
+    required String superAdminGroupCode,
+    String? adminGroupName,
+    required VoidCallback onContinue,
   }) {
     return showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => PopScope(
-        canPop: false, // Prevent back button
-        child: SuperAdminRegistrationSuccessDialog(
-          groupCode: groupCode,
-          adminGroupName: adminGroupName,
-        ),
+      builder: (context) => SuperAdminRegistrationSuccessDialog(
+        superAdminGroupCode: superAdminGroupCode,
+        adminGroupName: adminGroupName,
+        onContinue: onContinue,
       ),
     );
   }
 
   void _copyToClipboard(BuildContext context) {
-    Clipboard.setData(ClipboardData(text: groupCode));
+    Clipboard.setData(ClipboardData(text: superAdminGroupCode));
     
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          AppLocalizations.of(context).translate('copy_group_code') ??
-              'Group code copied to clipboard',
+          isArabic ? 'تم نسخ الرمز!' : 'Code copied to clipboard!',
         ),
+        backgroundColor: Colors.green,
         duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      title: Row(
-        children: [
-          Icon(
-            Icons.check_circle,
-            color: Colors.green,
-            size: 32,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              AppLocalizations.of(context).translate('superadmin_registration_success') ??
-                  'Registration Successful!',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
+    return WillPopScope(
+      onWillPop: () async => false, // Prevent dismissing by back button
+      child: Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+              // Success Icon
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check_circle,
+                  size: 50,
+                  color: Colors.green.shade600,
+                ),
               ),
-            ),
-          ),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Group Name Display
-            Text(
-              AppLocalizations.of(context).translate('admin_group.group_name') ??
-                  'Group Name',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                adminGroupName,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 24),
+
+              // Title
+              Text(
+                isArabic ? 'تم إنشاء الحساب بنجاح!' : 'Registration Successful!',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade700,
                 ),
                 textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-            // Group Code Label
-            Text(
-              AppLocalizations.of(context).translate('group_code_generated') ??
-                  'Your Group Code',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
+              // Admin Group Name (if provided)
+              if (adminGroupName != null) ...[
+                Text(
+                  isArabic ? 'مجموعة SuperAdmin:' : 'SuperAdmin Group:',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  adminGroupName!,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+              ],
 
-            // Group Code Display with Copy Button
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: theme.colorScheme.primary,
-                  width: 2,
+              // Important Message
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.amber.shade200,
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.amber.shade700,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isArabic
+                                ? 'رمز مجموعة SuperAdmin الخاص بك'
+                                : 'Your SuperAdmin Group Code',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      isArabic
+                          ? 'شارك هذا الرمز مع المسؤولين (Admins) للانضمام إلى مجموعتك. احفظه في مكان آمن!'
+                          : 'Share this code with Admins to join your group. Keep it safe!',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.amber.shade900,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
-              child: Column(
-                children: [
-                  // Group code
-                  Text(
-                    groupCode.toUpperCase(),
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 4,
-                      fontFamily: 'monospace',
-                      color: theme.colorScheme.primary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  // Copy button
-                  ElevatedButton.icon(
-                    onPressed: () => _copyToClipboard(context),
-                    icon: const Icon(Icons.copy, size: 18),
-                    label: Text(
-                      AppLocalizations.of(context).translate('copy_group_code') ??
-                          'Copy Code',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-            // Instructions
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Colors.blue.shade200,
+              // Group Code Display
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
                 ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: Colors.blue.shade700,
-                    size: 20,
+                decoration: BoxDecoration(
+                  color: theme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: theme.primaryColor,
+                    width: 2,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      AppLocalizations.of(context).translate('share_with_admins') ??
-                          'Share this code with admins so they can join your group during registration.',
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      isArabic ? 'رمز المجموعة' : 'Group Code',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.blue.shade900,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      superAdminGroupCode,
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 4,
+                        color: theme.primaryColor,
+                        fontFamily: 'monospace',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: 16),
+
+              // Copy Button
+              OutlinedButton.icon(
+                onPressed: () => _copyToClipboard(context),
+                icon: const Icon(Icons.copy),
+                label: Text(
+                  isArabic ? 'نسخ الرمز' : 'Copy Code',
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Continue Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    onContinue();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    isArabic ? 'متابعة' : 'Continue',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
             ),
-          ],
+          ),
         ),
       ),
-      actions: [
-        ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: Text(
-            AppLocalizations.of(context).translate('continue') ?? 'Continue',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
-      actionsAlignment: MainAxisAlignment.center,
     );
   }
 }

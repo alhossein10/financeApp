@@ -40,7 +40,7 @@ class DepartmentDropdown extends StatelessWidget {
     final bool isEnabled = departments.isNotEmpty;
 
     return DropdownButtonFormField<int>(
-      value: selectedDepartmentId,
+      initialValue: selectedDepartmentId,
       decoration: InputDecoration(
         labelText: 'القسم',
         errorText: errorText,

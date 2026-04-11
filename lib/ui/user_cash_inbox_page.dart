@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../data/db.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/bloc/auth_state.dart';
 import '../features/fund_box/presentation/bloc/fund_box_bloc.dart';
 import '../features/fund_box/presentation/bloc/fund_box_event.dart';
 import '../features/fund_box/presentation/bloc/fund_box_state.dart';
-import '../features/transfers/presentation/bloc/transfer_bloc.dart';
-import '../features/transfers/presentation/bloc/transfer_event.dart';
-import '../features/transfers/presentation/bloc/transfer_state.dart';
+import '../features/incoming/presentation/bloc/incoming_bloc.dart';
+import '../features/incoming/presentation/bloc/incoming_event.dart';
+import '../features/incoming/presentation/bloc/incoming_state.dart';
 import '../l10n/app_localizations.dart';
-import '../models/exchange_record.dart';
-import '../models/transfer.dart';
 import '../core/config/flavor_config.dart';
 import '../core/widgets/watermark_background.dart';
 
@@ -27,8 +24,6 @@ class UserCashInboxPage extends StatefulWidget {
 }
 
 class _UserCashInboxPageState extends State<UserCashInboxPage> {
-  final AppDatabase _db = AppDatabase();
-  
   int? _currentUserId;
 
   @override
@@ -47,28 +42,17 @@ class _UserCashInboxPageState extends State<UserCashInboxPage> {
       _currentUserId = authState.user!.id;
       // For user flavor, use calculated balance from API (real-time)
       context.read<FundBoxBloc>().add(const LoadCalculatedBalance());
-      context.read<TransferBloc>().add(LoadTransfersEvent(_currentUserId!));
+      // Load incoming income from admin using IncomingBloc
+      context.read<IncomingBloc>().add(const LoadIncoming());
     }
   }
   
   Future<void> _handleRefresh() async {
     if (_currentUserId != null) {
-      // Refresh both fundbox (calculated balance) and transfers
+      // Refresh both fundbox (calculated balance) and incoming income
       context.read<FundBoxBloc>().add(const LoadCalculatedBalance());
-      context.read<TransferBloc>().add(LoadTransfersEvent(_currentUserId!));
+      context.read<IncomingBloc>().add(const LoadIncoming());
     }
-  }
-
-
-  /// Get incoming transfers - transfers TO this user from admin
-  /// For users, incoming transfers are those where recipientUserId matches current user
-  List<TransferRecord> _getIncomingTransfers(List<TransferRecord> transfers) {
-    if (_currentUserId == null) {
-      return [];
-    }
-    
-    // Show transfers where recipientUserId matches current user (transfers TO this user from admin)
-    return transfers.where((t) => t.recipientUserId == _currentUserId).toList();
   }
 
   @override
@@ -77,15 +61,15 @@ class _UserCashInboxPageState extends State<UserCashInboxPage> {
     
     return MultiBlocListener(
       listeners: [
-        BlocListener<TransferBloc, TransferState>(
+        BlocListener<IncomingBloc, IncomingState>(
           listener: (context, state) {
-            if (state is TransferError) {
+            if (state is IncomingError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.message)),
               );
-            } else if (state is TransferLoaded) {
-              // When transfers are loaded/updated, refresh calculated balance
-              print('[UserCashInboxPage] Transfers loaded - refreshing calculated balance');
+            } else if (state is IncomingLoaded) {
+              // When incoming income is loaded/updated, refresh calculated balance
+              print('[UserCashInboxPage] Incoming income loaded - refreshing calculated balance');
               context.read<FundBoxBloc>().add(const LoadCalculatedBalance());
             }
           },
@@ -194,101 +178,97 @@ class _UserCashInboxPageState extends State<UserCashInboxPage> {
                 },
               ),
               
-              // Incoming Transfers List (single view, no tabs, no export button, no filtering)
+              // Incoming Income List (from admin via /incoming API)
               Expanded(
-                child: BlocBuilder<TransferBloc, TransferState>(
-                builder: (context, state) {
-                  if (state is TransferLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  
-                  if (state is TransferLoaded) {
-                    final transfers = state.transfers.map((t) => TransferRecord(
-                      id: t.id,
-                      recipientName: t.recipientName,
-                      amountUsd: t.amountUsd,
-                      convertedAmountUsd: t.convertedAmountUsd,
-                      amountSypAtExchange: t.amountSypAtExchange,
-                      manualUsdToSypRate: t.manualUsdToSypRate,
-                      transactionDate: t.transactionDate,
-                      createdAt: t.createdAt,
-                      userId: t.userId,
-                      recipientUserId: t.recipientUserId,
-                    )).toList();
+                child: BlocBuilder<IncomingBloc, IncomingState>(
+                  builder: (context, state) {
+                    if (state is IncomingLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
                     
-                    // Get only incoming transfers from admin (no filtering, just get user's transfers)
-                    final incomingTransfers = _getIncomingTransfers(transfers);
-                    
-                    if (incomingTransfers.isEmpty) {
+                    if (state is IncomingError) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.inbox, size: 64, color: Colors.grey.shade400),
+                            const Icon(Icons.error_outline, size: 64, color: Colors.red),
                             const SizedBox(height: 16),
                             Text(
-                              l10n.translate('no_transfers') ?? 'No incoming transfers',
+                              state.message,
                               style: TextStyle(color: Colors.grey.shade600),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _handleRefresh,
+                              icon: const Icon(Icons.refresh),
+                              label: Text(l10n?.retry ?? 'Retry'),
                             ),
                           ],
                         ),
                       );
                     }
                     
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      itemCount: incomingTransfers.length,
-                      itemBuilder: (context, index) {
-                        final t = incomingTransfers[index];
-                        
-                        if (t.id == null) {
-                          return const SizedBox.shrink();
-                        }
-                        
-                        return FutureBuilder<List<ExchangeRecord>>(
-                          future: _db.listExchangesByTransfer(t.id!),
-                          builder: (context, exchangeSnapshot) {
-                            // Calculate total exchanged amount (initial + all additional exchanges)
-                            // Same mechanism as admin version
-                            final initialConverted = t.convertedAmountUsd ?? 0.0;
-                            final additionalExchanges = exchangeSnapshot.data ?? [];
-                            final totalExchanged = initialConverted + 
-                              additionalExchanges.fold(0.0, (sum, e) => sum + e.convertedAmountUsd);
-                            
-                            final actualUsdRemaining = t.amountUsd - totalExchanged;
-                            
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                leading: const Icon(Icons.call_received, color: Colors.green),
-                                title: Text(
-                                  '${t.amountUsd.toStringAsFixed(2)} ${l10n.translate('usd')}',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                subtitle: Text(
-                                  '${l10n.translate('date') ?? 'Date'}: ${t.transactionDate.day}/${t.transactionDate.month}/${t.transactionDate.year}',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                trailing: Text(
-                                  'Remaining: ${actualUsdRemaining.toStringAsFixed(2)} USD',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
+                    if (state is IncomingLoaded) {
+                      final incomingList = state.incomingList;
+                      
+                      if (incomingList.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.inbox, size: 64, color: Colors.grey.shade400),
+                              const SizedBox(height: 16),
+                              Text(
+                                l10n?.incoming ?? 'No income from admin',
+                                style: TextStyle(color: Colors.grey.shade600),
                               ),
-                            );
-                          },
+                            ],
+                          ),
                         );
-                      },
+                      }
+                      
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: incomingList.length,
+                        itemBuilder: (context, index) {
+                          final incoming = incomingList[index];
+                          
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: const Icon(Icons.call_received, color: Colors.green),
+                              title: Text(
+                                '${incoming.amountUsd.toStringAsFixed(2)} ${l10n?.usd ?? 'USD'}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (incoming.description.isNotEmpty)
+                                    Text(
+                                      incoming.description,
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${l10n?.date ?? 'Date'}: ${incoming.transactionDate.day}/${incoming.transactionDate.month}/${incoming.transactionDate.year}',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }
+                    
+                    return Center(
+                      child: Text(l10n?.incoming ?? 'No income found'),
                     );
-                  }
-                  
-                  return Center(
-                    child: Text(l10n.translate('no_transfers') ?? 'No transfers found'),
-                  );
-                },
+                  },
+                ),
               ),
-            ),
             ],
           ),
         ),

@@ -16,7 +16,8 @@ class ExchangeRepositoryImpl implements ExchangeRepository {
     int? transferId,
     required String targetCurrency,
     required double amountUsd,
-    required double exchangeRate,
+    double? exchangeRate,
+    double? convertedAmount,
     required DateTime exchangeDate,
     String? notes,
   }) async {
@@ -28,6 +29,7 @@ class ExchangeRepositoryImpl implements ExchangeRepository {
         targetCurrency: targetCurrency,
         amountUsd: amountUsd,
         exchangeRate: exchangeRate,
+        convertedAmount: convertedAmount,
         exchangeDate: exchangeDateStr,
         notes: notes,
       );

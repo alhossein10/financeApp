@@ -41,7 +41,7 @@ class IncomingCacheDataSourceImpl implements IncomingCacheDataSource {
     DateTime? startDate,
     DateTime? endDate,
   }) {
-    final buffer = StringBuffer('incoming_list_p${page}');
+    final buffer = StringBuffer('incoming_list_p$page');
     if (startDate != null) {
       buffer.write('_start${startDate.millisecondsSinceEpoch}');
     }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App name will be set dynamically based on flavor build variants -->
+    <!-- Default name (can be overridden by flavor-specific strings.xml) -->
+    <string name="app_name">الإدارة المالية</string>
+</resources>
+

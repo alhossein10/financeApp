@@ -38,8 +38,8 @@ class RoleBasedWidget extends StatelessWidget {
   }) {
     return RoleBasedWidget(
       adminOnly: true,
-      child: child,
       fallback: fallback,
+      child: child,
     );
   }
 
@@ -50,8 +50,8 @@ class RoleBasedWidget extends StatelessWidget {
   }) {
     return RoleBasedWidget(
       userOnly: true,
-      child: child,
       fallback: fallback,
+      child: child,
     );
   }
 

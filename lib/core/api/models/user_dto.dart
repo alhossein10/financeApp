@@ -9,6 +9,7 @@ class UserDto {
   final String role;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final String? profileImageUrl; // URL for profile image from API
   
   // New fields for admin group management
   final String? organizationName;
@@ -27,6 +28,7 @@ class UserDto {
     required this.role,
     required this.createdAt,
     this.updatedAt,
+    this.profileImageUrl,
     this.organizationName,
     this.departmentName,
     this.adminGroupId,
@@ -137,6 +139,7 @@ class UserDto {
         updatedAt: userData['updated_at'] != null
             ? DateTime.parse(userData['updated_at'] as String)
             : null,
+        profileImageUrl: userData['profile_photo_url'] as String? ?? userData['profile_image_url'] as String?,
         // New fields - prioritize new format over old
         organizationName: userData['organization_name'] as String?,
         departmentName: userData['department_name'] as String?,
@@ -169,6 +172,7 @@ class UserDto {
       'role': role,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+      if (profileImageUrl != null) 'profile_image_url': profileImageUrl,
       if (organizationName != null) 'organization_name': organizationName,
       if (departmentName != null) 'department_name': departmentName,
       if (adminGroupId != null) 'admin_group_id': adminGroupId,
@@ -188,6 +192,7 @@ class UserDto {
       role: _mapRole(role),
       createdAt: createdAt,
       updatedAt: updatedAt,
+      profileImageUrl: profileImageUrl,
       // Prioritize new fields over old fields
       organizationName: organizationName,
       departmentName: departmentName,
@@ -212,6 +217,7 @@ class UserDto {
               : 'user',
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      profileImageUrl: user.profileImageUrl,
       organizationName: user.organizationName,
       departmentName: user.departmentName,
       adminGroupId: user.adminGroupId,

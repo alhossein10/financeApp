@@ -10,6 +10,11 @@ import '../features/expenses/presentation/bloc/expense_bloc.dart';
 import '../features/expenses/presentation/bloc/expense_event.dart';
 import '../features/expenses/presentation/bloc/expense_state.dart';
 import '../features/expenses/domain/entities/expense.dart' as domain;
+import '../features/admin_group/presentation/bloc/admin_group_bloc.dart';
+import '../features/admin_group/presentation/bloc/admin_group_event.dart';
+import '../features/admin_group/presentation/bloc/admin_group_state.dart';
+import '../features/fund_box/presentation/bloc/fund_box_bloc.dart';
+import '../features/fund_box/presentation/bloc/fund_box_event.dart';
 import '../l10n/app_localizations.dart';
 import '../models/expense.dart';
 import '../state/filters.dart';
@@ -30,7 +35,6 @@ class ExpensePage extends StatefulWidget {
 
 class _ExpensePageState extends State<ExpensePage> {
   int? _currentUserId;
-  domain.SyncStatus? _selectedSyncStatusFilter;
 
   @override
   void initState() {
@@ -47,17 +51,18 @@ class _ExpensePageState extends State<ExpensePage> {
     if (authState is AuthAuthenticated && authState.user != null) {
       _currentUserId = authState.user!.id;
       context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
+      
+      // Load group members for admin flavor (to include all users in filter, including admin owner)
+      if (FlavorConfig.instance.isAdmin) {
+        context.read<AdminGroupBloc>().add(const LoadGroupMembersEvent());
+      }
     }
   }
 
   void _reload() {
     if (_currentUserId != null) {
-      // Only reload if we don't already have loaded expenses
-      // This prevents unnecessary reloads that lose invoice status
-      final currentState = context.read<ExpenseBloc>().state;
-      if (currentState is! ExpenseLoaded) {
-        context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
-      }
+      // Always reload to get fresh data, but previous expenses will be preserved during loading
+      context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
     }
   }
 
@@ -70,23 +75,25 @@ class _ExpensePageState extends State<ExpensePage> {
     InvoiceStatus status = InvoiceStatus.noInvoice;
     String? invoicePath;
     DateTime selectedDate = DateTime.now();
+    bool isUploading = false;
+    double uploadProgress = 0.0;
 
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: Text(l10n.translate('new_expense')),
+          title: Text(l10n?.newExpense ?? 'New Expense'),
           content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: descCtrl,
-                    decoration: InputDecoration(labelText: l10n.translate('item_description')),
+                    decoration: InputDecoration(labelText: l10n?.itemDescription),
                   ),
                   const SizedBox(height: 8),
                   ListTile(
-                    title: Text(l10n.translate('expense_date')),
+                    title: Text(l10n?.expenseDate ?? 'Expense Date'),
                     subtitle: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
                     trailing: const Icon(Icons.calendar_today),
                     onTap: () async {
@@ -107,7 +114,7 @@ class _ExpensePageState extends State<ExpensePage> {
                       child: TextField(
                         controller: usdCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(labelText: l10n.translate('price_usd')),
+                        decoration: InputDecoration(labelText: l10n?.priceUsd),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -115,7 +122,7 @@ class _ExpensePageState extends State<ExpensePage> {
                       child: TextField(
                         controller: sypCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(labelText: l10n.translate('price_syp')),
+                        decoration: InputDecoration(labelText: l10n?.priceSyp),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -123,7 +130,7 @@ class _ExpensePageState extends State<ExpensePage> {
                       child: TextField(
                         controller: tryCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(labelText: l10n.translate('price_try')),
+                        decoration: InputDecoration(labelText: l10n?.priceTry),
                       ),
                     ),
                   ],
@@ -132,40 +139,95 @@ class _ExpensePageState extends State<ExpensePage> {
                 DropdownButtonFormField<InvoiceStatus>(
                   initialValue: status,
                   items: [
-                    DropdownMenuItem(value: InvoiceStatus.invoiceAvailable, child: Text(l10n.translate('invoice_available'))),
-                    DropdownMenuItem(value: InvoiceStatus.noInvoice, child: Text(l10n.translate('no_invoice_available'))),
+                    DropdownMenuItem(value: InvoiceStatus.invoiceAvailable, child: Text(l10n?.invoiceAvailable ?? 'Invoice available')),
+                    DropdownMenuItem(value: InvoiceStatus.noInvoice, child: Text(l10n?.noInvoiceAvailable ?? 'No invoice available')),
                   ],
                   onChanged: (v) => setLocal(() => status = v ?? InvoiceStatus.noInvoice),
-                  decoration: InputDecoration(labelText: l10n.translate('invoice_status')),
+                  decoration: InputDecoration(labelText: l10n?.invoiceStatus),
                 ),
                 if (status == InvoiceStatus.invoiceAvailable) ...[
                   const SizedBox(height: 8),
-                  Text(invoicePath ?? l10n.translate('no_file_selected'), style: const TextStyle(fontSize: 12)),
+                  // Show invoice thumbnail if available
+                  if (invoicePath != null && invoicePath!.isNotEmpty) ...[
+                    Container(
+                      height: 100,
+                      width: 100,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(invoicePath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: Icon(Icons.image_not_supported, size: 40),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      invoicePath!.split('/').last,
+                      style: const TextStyle(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ] else
+                    Text(l10n?.noFileSelected ?? 'No file selected', style: const TextStyle(fontSize: 12)),
                   const SizedBox(height: 8),
+                  // Show upload progress if uploading
+                  if (isUploading) ...[
+                    LinearProgressIndicator(value: uploadProgress),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${(uploadProgress * 100).toStringAsFixed(0)}%',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () async {
+                        onPressed: isUploading ? null : () async {
                           final path = await CameraHelper.takePicture(ctx);
                           if (path != null) {
                             setLocal(() => invoicePath = path);
                           }
                         },
                         icon: const Icon(Icons.camera_alt, size: 20),
-                        label: Text(l10n.translate('take_photo')),
+                        label: Text(l10n?.takePhoto ?? 'Take Photo'),
                       ),
                       ElevatedButton.icon(
-                        onPressed: () async {
-                          final res = await FilePicker.platform.pickFiles(type: FileType.any, allowMultiple: false);
+                        onPressed: isUploading ? null : () async {
+                          final res = await FilePicker.platform.pickFiles(
+                            type: FileType.image,
+                            allowMultiple: false,
+                          );
                           if (res != null && res.files.single.path != null) {
                             setLocal(() => invoicePath = res.files.single.path);
                           }
                         },
                         icon: const Icon(Icons.upload_file, size: 20),
-                        label: Text(l10n.translate('from_gallery')),
+                        label: Text(l10n?.fromGallery ?? 'From Gallery'),
                       ),
+                      if (invoicePath != null && invoicePath!.isNotEmpty)
+                        ElevatedButton.icon(
+                          onPressed: isUploading ? null : () {
+                            setLocal(() => invoicePath = null);
+                          },
+                          icon: const Icon(Icons.delete, size: 20),
+                          label: Text(l10n?.remove ?? 'Remove'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -173,8 +235,14 @@ class _ExpensePageState extends State<ExpensePage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.translate('cancel'))),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.translate('save'))),
+            TextButton(
+              onPressed: isUploading ? null : () => Navigator.pop(ctx, false),
+              child: Text(l10n?.cancel ?? 'Cancel'),
+            ),
+            FilledButton(
+              onPressed: isUploading ? null : () => Navigator.pop(ctx, true),
+              child: Text(l10n?.save ?? 'Save'),
+            ),
           ],
         ),
       ),
@@ -210,23 +278,25 @@ class _ExpensePageState extends State<ExpensePage> {
     InvoiceStatus status = expense.invoiceStatus;
     String? invoicePath = expense.invoiceFilePath;
     DateTime selectedDate = expense.expenseDate;
+    bool isUploading = false;
+    double uploadProgress = 0.0;
 
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: Text(l10n.translate('edit_expense')),
+          title: Text(l10n?.editExpense ?? 'Edit Expense'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: descCtrl,
-                  decoration: InputDecoration(labelText: l10n.translate('item_description')),
+                  decoration: InputDecoration(labelText: l10n?.itemDescription),
                 ),
                 const SizedBox(height: 8),
                 ListTile(
-                  title: Text(l10n.translate('expense_date')),
+                  title: Text(l10n?.expenseDate ?? 'Expense Date'),
                   subtitle: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
                   trailing: const Icon(Icons.calendar_today),
                   onTap: () async {
@@ -247,7 +317,7 @@ class _ExpensePageState extends State<ExpensePage> {
                       child: TextField(
                         controller: usdCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(labelText: l10n.translate('price_usd')),
+                        decoration: InputDecoration(labelText: l10n?.priceUsd),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -255,7 +325,7 @@ class _ExpensePageState extends State<ExpensePage> {
                       child: TextField(
                         controller: sypCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(labelText: l10n.translate('price_syp')),
+                        decoration: InputDecoration(labelText: l10n?.priceSyp),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -263,7 +333,7 @@ class _ExpensePageState extends State<ExpensePage> {
                       child: TextField(
                         controller: tryCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(labelText: l10n.translate('price_try')),
+                        decoration: InputDecoration(labelText: l10n?.priceTry),
                       ),
                     ),
                   ],
@@ -272,40 +342,95 @@ class _ExpensePageState extends State<ExpensePage> {
                 DropdownButtonFormField<InvoiceStatus>(
                   initialValue: status,
                   items: [
-                    DropdownMenuItem(value: InvoiceStatus.invoiceAvailable, child: Text(l10n.translate('invoice_available'))),
-                    DropdownMenuItem(value: InvoiceStatus.noInvoice, child: Text(l10n.translate('no_invoice_available'))),
+                    DropdownMenuItem(value: InvoiceStatus.invoiceAvailable, child: Text(l10n?.invoiceAvailable ?? 'Invoice available')),
+                    DropdownMenuItem(value: InvoiceStatus.noInvoice, child: Text(l10n?.noInvoiceAvailable ?? 'No invoice available')),
                   ],
                   onChanged: (v) => setLocal(() => status = v ?? InvoiceStatus.noInvoice),
-                  decoration: InputDecoration(labelText: l10n.translate('invoice_status')),
+                  decoration: InputDecoration(labelText: l10n?.invoiceStatus),
                 ),
                 if (status == InvoiceStatus.invoiceAvailable) ...[
                   const SizedBox(height: 8),
-                  Text(invoicePath ?? l10n.translate('no_file_selected'), style: const TextStyle(fontSize: 12)),
+                  // Show invoice thumbnail if available
+                  if (invoicePath != null && invoicePath!.isNotEmpty) ...[
+                    Container(
+                      height: 100,
+                      width: 100,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(invoicePath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: Icon(Icons.image_not_supported, size: 40),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      invoicePath!.split('/').last,
+                      style: const TextStyle(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ] else
+                    Text(l10n?.noFileSelected ?? 'No file selected', style: const TextStyle(fontSize: 12)),
                   const SizedBox(height: 8),
+                  // Show upload progress if uploading
+                  if (isUploading) ...[
+                    LinearProgressIndicator(value: uploadProgress),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${(uploadProgress * 100).toStringAsFixed(0)}%',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () async {
+                        onPressed: isUploading ? null : () async {
                           final path = await CameraHelper.takePicture(ctx);
                           if (path != null) {
                             setLocal(() => invoicePath = path);
                           }
                         },
                         icon: const Icon(Icons.camera_alt, size: 20),
-                        label: Text(l10n.translate('take_photo')),
+                        label: Text(l10n?.takePhoto ?? 'Take Photo'),
                       ),
                       ElevatedButton.icon(
-                        onPressed: () async {
-                          final res = await FilePicker.platform.pickFiles(type: FileType.any, allowMultiple: false);
+                        onPressed: isUploading ? null : () async {
+                          final res = await FilePicker.platform.pickFiles(
+                            type: FileType.image,
+                            allowMultiple: false,
+                          );
                           if (res != null && res.files.single.path != null) {
                             setLocal(() => invoicePath = res.files.single.path);
                           }
                         },
                         icon: const Icon(Icons.upload_file, size: 20),
-                        label: Text(l10n.translate('from_gallery')),
+                        label: Text(l10n?.fromGallery ?? 'From Gallery'),
                       ),
+                      if (invoicePath != null && invoicePath!.isNotEmpty)
+                        ElevatedButton.icon(
+                          onPressed: isUploading ? null : () {
+                            setLocal(() => invoicePath = null);
+                          },
+                          icon: const Icon(Icons.delete, size: 20),
+                          label: Text(l10n?.remove ?? 'Remove'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -313,8 +438,14 @@ class _ExpensePageState extends State<ExpensePage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.translate('cancel'))),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.translate('save'))),
+            TextButton(
+              onPressed: isUploading ? null : () => Navigator.pop(ctx, false),
+              child: Text(l10n?.cancel ?? 'Cancel'),
+            ),
+            FilledButton(
+              onPressed: isUploading ? null : () => Navigator.pop(ctx, true),
+              child: Text(l10n?.save ?? 'Save'),
+            ),
           ],
         ),
       ),
@@ -356,21 +487,10 @@ class _ExpensePageState extends State<ExpensePage> {
     }
   }
 
-  Future<void> _handleRefresh() async {
-    // Trigger sync of all pending expenses
-    context.read<ExpenseBloc>().add(const SyncAllPendingRequested());
-    
-    // Wait a bit for sync to start
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    // Reload expenses
-    _reload();
-  }
-
   Future<void> _showInvoiceImage(BuildContext context, domain.Expense expense) async {
     if (expense.invoiceStatus != domain.InvoiceStatus.invoiceAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).translate('no_invoice_image'))),
+        SnackBar(content: Text(AppLocalizations.of(context)?.noInvoiceImage ?? 'No invoice image available')),
       );
       return;
     }
@@ -396,7 +516,7 @@ class _ExpensePageState extends State<ExpensePage> {
                   children: [
                     const Icon(Icons.error, size: 48, color: Colors.red),
                     const SizedBox(height: 16),
-                    Text(AppLocalizations.of(context).translate('failed_to_load_image')),
+                    Text(AppLocalizations.of(context)?.failedToLoadImage ?? 'Failed to load image'),
                   ],
                 ),
               );
@@ -409,7 +529,7 @@ class _ExpensePageState extends State<ExpensePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 AppBar(
-                  title: Text(AppLocalizations.of(context).translate('invoice_image')),
+                  title: Text(AppLocalizations.of(context)?.invoiceImage ?? 'Invoice Image'),
                   automaticallyImplyLeading: false,
                   actions: [
                     IconButton(
@@ -504,27 +624,33 @@ class _ExpensePageState extends State<ExpensePage> {
       listener: (context, state) {
         if (state is ExpenseCreated) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.translate('expense_created'))),
+            SnackBar(content: Text(l10n?.expenseCreated ?? 'Expense created successfully')),
           );
           // Reload to get the updated list from server
           if (_currentUserId != null) {
             context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
+            // Reload FundBox to get updated balance
+            context.read<FundBoxBloc>().add(LoadFundBox(_currentUserId!));
           }
         } else if (state is ExpenseUpdated) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.translate('expense_updated'))),
+            SnackBar(content: Text(l10n?.expenseUpdated ?? 'Expense updated successfully')),
           );
           // Reload to get the updated list from server
           if (_currentUserId != null) {
             context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
+            // Reload FundBox to get updated balance
+            context.read<FundBoxBloc>().add(LoadFundBox(_currentUserId!));
           }
         } else if (state is ExpenseDeleted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.translate('expense_deleted'))),
+            SnackBar(content: Text(l10n?.expenseDeleted ?? 'Expense deleted successfully')),
           );
           // Reload to get the updated list from server
           if (_currentUserId != null) {
             context.read<ExpenseBloc>().add(LoadExpensesRequested(_currentUserId!));
+            // Reload FundBox to get updated balance
+            context.read<FundBoxBloc>().add(LoadFundBox(_currentUserId!));
           }
         } else if (state is ExpenseError) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -541,7 +667,7 @@ class _ExpensePageState extends State<ExpensePage> {
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   ),
                   const SizedBox(width: 12),
-                  Text(l10n.translate('syncing')),
+                  Text(l10n?.syncing ?? 'Syncing...'),
                 ],
               ),
               duration: const Duration(seconds: 2),
@@ -549,7 +675,7 @@ class _ExpensePageState extends State<ExpensePage> {
           );
         } else if (state is ExpenseSynced) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.translate('sync_completed'))),
+            SnackBar(content: Text(l10n?.syncCompleted ?? 'Sync completed successfully')),
           );
           // Reload to get the updated list from server
           if (_currentUserId != null) {
@@ -558,14 +684,14 @@ class _ExpensePageState extends State<ExpensePage> {
         } else if (state is ExpenseSyncError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${l10n.translate('sync_failed')}: ${state.message}'),
+              content: Text('${l10n?.syncFailed}: ${state.message}'),
               backgroundColor: Colors.red,
             ),
           );
         }
       },
       child: WatermarkBackground(
-        child: _buildExpenseList(context, l10n),
+        child: _buildExpenseList(context, l10n!),
       ),
     );
   }
@@ -585,17 +711,17 @@ class _ExpensePageState extends State<ExpensePage> {
                     // First row: Currency filter and Add button
                     Row(
                       children: [
-                        Text('${l10n.translate('currency')}:'),
+                        Text('${l10n?.currency}:'),
                         const SizedBox(width: 8),
                         Expanded(
                           child: DropdownButton<ExpenseCurrencyFilter>(
                             value: currencyFilter,
                             isExpanded: true,
                             items: [
-                              DropdownMenuItem(value: ExpenseCurrencyFilter.all, child: Text(l10n.translate('all'))),
-                              DropdownMenuItem(value: ExpenseCurrencyFilter.usd, child: Text(l10n.translate('usd'))),
-                              DropdownMenuItem(value: ExpenseCurrencyFilter.syp, child: Text(l10n.translate('syp'))),
-                              DropdownMenuItem(value: ExpenseCurrencyFilter.tr, child: Text(l10n.translate('try'))),
+                              DropdownMenuItem(value: ExpenseCurrencyFilter.all, child: Text(l10n?.all ?? 'All')),
+                              DropdownMenuItem(value: ExpenseCurrencyFilter.usd, child: Text(l10n?.usd ?? 'USD')),
+                              DropdownMenuItem(value: ExpenseCurrencyFilter.syp, child: Text(l10n?.syp ?? 'SYP')),
+                              DropdownMenuItem(value: ExpenseCurrencyFilter.tr, child: Text(l10n?.currencyTry ?? 'TRY')),
                             ],
                             onChanged: (v) {
                               if (v != null) ExpenseFilterNotifier.instance.value = v;
@@ -607,7 +733,7 @@ class _ExpensePageState extends State<ExpensePage> {
                         FilledButton.icon(
                           onPressed: () => _addExpense(context),
                           icon: const Icon(Icons.add),
-                          label: Text(l10n.translate('add_expense')),
+                          label: Text(l10n?.addExpense ?? 'Add expense'),
                         ),
                       ],
                     ),
@@ -615,18 +741,18 @@ class _ExpensePageState extends State<ExpensePage> {
                     // Second row: Date filter
                     Row(
                       children: [
-                        Text('${l10n.translate('date')}:'),
+                        Text('${l10n?.date}:'),
                         const SizedBox(width: 8),
                         Expanded(
                           child: DropdownButton<DateFilterType>(
                             value: dateFilter.type,
                             isExpanded: true,
                             items: [
-                              DropdownMenuItem(value: DateFilterType.all, child: Text(l10n.translate('all'))),
-                              DropdownMenuItem(value: DateFilterType.today, child: Text(l10n.translate('today'))),
-                              DropdownMenuItem(value: DateFilterType.thisWeek, child: Text(l10n.translate('this_week'))),
-                              DropdownMenuItem(value: DateFilterType.thisMonth, child: Text(l10n.translate('this_month'))),
-                              DropdownMenuItem(value: DateFilterType.custom, child: Text(l10n.translate('custom'))),
+                              DropdownMenuItem(value: DateFilterType.all, child: Text(l10n?.all ?? 'All')),
+                              DropdownMenuItem(value: DateFilterType.today, child: Text(l10n?.today ?? 'Today')),
+                              DropdownMenuItem(value: DateFilterType.thisWeek, child: Text(l10n?.thisWeek ?? 'This Week')),
+                              DropdownMenuItem(value: DateFilterType.thisMonth, child: Text(l10n?.thisMonth ?? 'This Month')),
+                              DropdownMenuItem(value: DateFilterType.custom, child: Text(l10n?.custom ?? 'Custom')),
                             ],
                             onChanged: (v) async {
                               if (v == null) return;
@@ -670,9 +796,12 @@ class _ExpensePageState extends State<ExpensePage> {
                         builder: (context, userFilter, _) {
                           // Get unique users from expenses
                           final expenseState = context.read<ExpenseBloc>().state;
-                          final allExpenses = expenseState is ExpenseLoaded 
-                              ? expenseState.expenses
-                              : const <domain.Expense>[];
+                          final allExpenses = <domain.Expense>[];
+                          if (expenseState is ExpenseLoaded) {
+                            allExpenses.addAll(expenseState.expenses);
+                          } else if (expenseState is ExpenseLoading && expenseState.previousExpenses != null) {
+                            allExpenses.addAll(expenseState.previousExpenses!);
+                          }
                           
                           // Extract unique users with their display names
                           final userMap = <int, String>{};
@@ -684,80 +813,67 @@ class _ExpensePageState extends State<ExpensePage> {
                             }
                           }
                           
-                          final sortedUsers = userMap.entries.toList()
-                            ..sort((a, b) => a.value.compareTo(b.value));
-                          
-                          return Row(
-                            children: [
-                              Text('${l10n.translate('user')}:'),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: DropdownButton<String?>(
-                                  value: userFilter,
-                                  isExpanded: true,
-                                  hint: Text(l10n.translate('all_users')),
-                                  items: [
-                                    DropdownMenuItem<String?>(
-                                      value: null,
-                                      child: Text(l10n.translate('all_users')),
+                          // For admin flavor, also include all group members (including admin owner)
+                          return BlocBuilder<AdminGroupBloc, AdminGroupState>(
+                            builder: (context, adminGroupState) {
+                              // Add group members to user map (this includes all users in the group)
+                              if (adminGroupState is GroupMembersLoaded) {
+                                for (final member in adminGroupState.members) {
+                                  // Always add/update member name from group members list
+                                  // This ensures all group members appear in the filter, even if they haven't created expenses yet
+                                  userMap[member.id] = member.name;
+                                }
+                              }
+                              
+                              // Also add the admin owner if available from adminGroup
+                              if (adminGroupState.adminGroup != null) {
+                                final adminUserId = adminGroupState.adminGroup!.adminUserId;
+                                // Try to get admin name from current auth user or use default
+                                final authState = context.read<AuthBloc>().state;
+                                String adminName = 'Admin';
+                                if (authState is AuthAuthenticated && authState.user?.id == adminUserId) {
+                                  adminName = authState.user?.username ?? authState.user?.email ?? 'Admin';
+                                }
+                                // Add admin to the list if not already present
+                                if (!userMap.containsKey(adminUserId)) {
+                                  userMap[adminUserId] = adminName;
+                                }
+                              }
+                              
+                              final sortedUsers = userMap.entries.toList()
+                                ..sort((a, b) => a.value.compareTo(b.value));
+                              
+                              return Row(
+                                children: [
+                                  Text('${l10n?.user}:'),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: DropdownButton<String?>(
+                                      value: userFilter,
+                                      isExpanded: true,
+                                      hint: Text(l10n?.allUsers ?? 'All Users'),
+                                      items: [
+                                        DropdownMenuItem<String?>(
+                                          value: null,
+                                          child: Text(l10n?.allUsers ?? 'All Users'),
+                                        ),
+                                        ...sortedUsers.map((entry) {
+                                          return DropdownMenuItem<String?>(
+                                            value: entry.key.toString(),
+                                            child: Text(entry.value),
+                                          );
+                                        }),
+                                      ],
+                                      onChanged: (v) {
+                                        UserFilterNotifier.instance.value = v;
+                                      },
                                     ),
-                                    ...sortedUsers.map((entry) {
-                                      return DropdownMenuItem<String?>(
-                                        value: entry.key.toString(),
-                                        child: Text(entry.value),
-                                      );
-                                    }),
-                                  ],
-                                  onChanged: (v) {
-                                    UserFilterNotifier.instance.value = v;
-                                  },
-                                ),
-                              ),
-                            ],
+                                  ),
+                                ],
+                              );
+                            },
                           );
                         },
-                      ),
-                    ],
-                    // Sync status filter - only show in user flavor
-                    if (!FlavorConfig.instance.isAdmin) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text('${l10n.translate('sync_status')}:'),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: DropdownButton<domain.SyncStatus?>(
-                              value: _selectedSyncStatusFilter,
-                              isExpanded: true,
-                              hint: Text(l10n.translate('all_statuses')),
-                              items: [
-                                DropdownMenuItem<domain.SyncStatus?>(
-                                  value: null,
-                                  child: Text(l10n.translate('all_statuses')),
-                                ),
-                                DropdownMenuItem(
-                                  value: domain.SyncStatus.pending,
-                                  child: Text(l10n.translate('sync_pending')),
-                                ),
-                                DropdownMenuItem(
-                                  value: domain.SyncStatus.syncing,
-                                  child: Text(l10n.translate('sync_syncing')),
-                                ),
-                                DropdownMenuItem(
-                                  value: domain.SyncStatus.synced,
-                                  child: Text(l10n.translate('sync_synced')),
-                                ),
-                                DropdownMenuItem(
-                                  value: domain.SyncStatus.failed,
-                                  child: Text(l10n.translate('sync_failed')),
-                                ),
-                              ],
-                              onChanged: (v) {
-                                setState(() => _selectedSyncStatusFilter = v);
-                              },
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                     if (dateFilter.type == DateFilterType.custom && dateFilter.startDate != null && dateFilter.endDate != null)
@@ -780,9 +896,14 @@ class _ExpensePageState extends State<ExpensePage> {
           builder: (context, userFilter, _) {
             return BlocBuilder<ExpenseBloc, ExpenseState>(
               builder: (context, state) {
-                var domainExpenses = state is ExpenseLoaded 
-                    ? state.expenses
-                    : const <domain.Expense>[];
+                // Use previous expenses if loading, otherwise use loaded expenses
+                var domainExpenses = <domain.Expense>[];
+                if (state is ExpenseLoaded) {
+                  domainExpenses = state.expenses;
+                } else if (state is ExpenseLoading && state.previousExpenses != null) {
+                  // Show previous expenses while loading to prevent UI clearing
+                  domainExpenses = state.previousExpenses!;
+                }
                 
                 final syncStatusMap = state.syncStatusMap;
                 final currencyFilter = ExpenseFilterNotifier.instance.value;
@@ -843,13 +964,6 @@ class _ExpensePageState extends State<ExpensePage> {
                   }
                 }
                 
-                // Filter by sync status (for user flavor)
-                if (_selectedSyncStatusFilter != null) {
-                  domainExpenses = domainExpenses.where((e) {
-                    return e.syncStatus == _selectedSyncStatusFilter;
-                  }).toList();
-                }
-                
                 return Column(
                   children: domainExpenses
                       .map((e) {
@@ -874,10 +988,38 @@ class _ExpensePageState extends State<ExpensePage> {
                     
                     return Card(
                       child: ListTile(
-                        leading: Icon(
-                          e.invoiceStatus == domain.InvoiceStatus.invoiceAvailable ? Icons.verified : Icons.info_outline,
-                          color: e.invoiceStatus == domain.InvoiceStatus.invoiceAvailable ? Colors.green : null,
-                        ),
+                        leading: e.invoiceStatus == domain.InvoiceStatus.invoiceAvailable && 
+                                 e.invoiceFilePath != null
+                            ? Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.green, width: 2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Image.file(
+                                    File(e.invoiceFilePath!),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.verified,
+                                        color: Colors.green,
+                                        size: 30,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                e.invoiceStatus == domain.InvoiceStatus.invoiceAvailable 
+                                    ? Icons.verified 
+                                    : Icons.info_outline,
+                                color: e.invoiceStatus == domain.InvoiceStatus.invoiceAvailable 
+                                    ? Colors.green 
+                                    : null,
+                              ),
                         title: Row(
                           children: [
                             Expanded(child: Text(e.description)),
@@ -897,16 +1039,16 @@ class _ExpensePageState extends State<ExpensePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text([
-                              if (e.priceUsd != null) '${l10n.translate('usd')} ${e.priceUsd!.toStringAsFixed(2)}',
-                              if (e.priceSyp != null) '${l10n.translate('syp')} ${e.priceSyp!.toStringAsFixed(0)}',
-                              if (e.priceTry != null) '${l10n.translate('try')} ${e.priceTry!.toStringAsFixed(2)}',
+                              if (e.priceUsd != null) '${l10n?.usd} ${e.priceUsd!.toStringAsFixed(2)}',
+                              if (e.priceSyp != null) '${l10n?.syp} ${e.priceSyp!.toStringAsFixed(0)}',
+                              if (e.priceTry != null) '${l10n?.currencyTry} ${e.priceTry!.toStringAsFixed(2)}',
                             ].join(' • ')),
                             // Show creator info for admin
                             if (FlavorConfig.instance.isAdmin && (e.creatorUsername != null || e.creatorEmail != null))
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Text(
-                                  '${l10n.translate('created_by')}: ${e.creatorUsername ?? e.creatorEmail ?? l10n.translate('unknown_user')}',
+                                  '${l10n?.createdBy}: ${e.creatorUsername ?? e.creatorEmail ?? l10n?.unknownUser}',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey[600],
@@ -924,7 +1066,7 @@ class _ExpensePageState extends State<ExpensePage> {
                                   onPressed: () => _showInvoiceImage(context, e),
                                   icon: const Icon(Icons.image, size: 16),
                                   label: Text(
-                                    l10n.translate('view_invoice'),
+                                    l10n?.viewInvoice ?? 'View Invoice',
                                     style: const TextStyle(fontSize: 12),
                                   ),
                                   style: TextButton.styleFrom(
@@ -941,25 +1083,100 @@ class _ExpensePageState extends State<ExpensePage> {
                             if (v == 'edit') {
                               await _editExpense(context, expenseRecord);
                             } else if (v == 'delete' && _currentUserId != null) {
-                              context.read<ExpenseBloc>().add(DeleteExpenseRequested(
-                                expenseId: e.id!,
-                                userId: _currentUserId!,
-                              ));
+                              // Show confirmation dialog
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(l10n?.confirmDelete ?? 'Confirm Delete'),
+                                  content: Text(l10n?.deleteExpenseConfirmation ?? 'Are you sure you want to delete this expense?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, false),
+                                      child: Text(l10n?.cancel ?? 'Cancel'),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                      ),
+                                      child: Text(l10n?.delete ?? 'Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              
+                              if (confirmed == true && context.mounted) {
+                                context.read<ExpenseBloc>().add(DeleteExpenseRequested(
+                                  expenseId: e.id!,
+                                  userId: _currentUserId!,
+                                ));
+                              }
                             } else if (v == 'retry' && e.id != null) {
                               context.read<ExpenseBloc>().add(SyncExpenseRequested(e));
                             } else if (v == 'view_image') {
                               _showInvoiceImage(context, e);
+                            } else if (v == 'delete_invoice' && e.id != null) {
+                              // Show confirmation dialog for invoice deletion
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(l10n?.confirmDelete ?? 'Confirm Delete'),
+                                  content: Text(l10n?.deleteInvoiceConfirmation ?? 'Are you sure you want to delete this invoice?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, false),
+                                      child: Text(l10n?.cancel ?? 'Cancel'),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                      ),
+                                      child: Text(l10n?.delete ?? 'Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              
+                              if (confirmed == true && context.mounted) {
+                                // Update expense to remove invoice
+                                final updatedExpense = domain.Expense(
+                                  id: e.id,
+                                  userId: e.userId,
+                                  description: e.description,
+                                  priceUsd: e.priceUsd,
+                                  priceSyp: e.priceSyp,
+                                  priceTry: e.priceTry,
+                                  invoiceStatus: domain.InvoiceStatus.noInvoice,
+                                  invoiceFilePath: null,
+                                  expenseDate: e.expenseDate,
+                                  createdAt: e.createdAt,
+                                  updatedAt: DateTime.now(),
+                                );
+                                
+                                context.read<ExpenseBloc>().add(UpdateExpenseRequested(
+                                  expense: updatedExpense,
+                                  currentUserId: _currentUserId!,
+                                ));
+                              }
                             }
                           },
                           itemBuilder: (ctx) => [
-                            PopupMenuItem(value: 'edit', child: Text(l10n.translate('edit'))),
-                            PopupMenuItem(value: 'delete', child: Text(l10n.translate('delete'))),
+                            PopupMenuItem(value: 'edit', child: Text(l10n?.edit ?? 'Edit')),
+                            PopupMenuItem(value: 'delete', child: Text(l10n?.delete ?? 'Delete')),
                             if (syncStatus == domain.SyncStatus.failed)
-                              PopupMenuItem(value: 'retry', child: Text(l10n.translate('retry_sync'))),
-                            if (FlavorConfig.instance.isAdmin && 
-                                e.invoiceStatus == domain.InvoiceStatus.invoiceAvailable &&
-                                (e.invoiceCloudFileId != null || e.invoiceFilePath != null))
-                              PopupMenuItem(value: 'view_image', child: Text(l10n.translate('view_invoice'))),
+                              PopupMenuItem(value: 'retry', child: Text(l10n?.retrySync ?? 'Retry')),
+                            if (e.invoiceStatus == domain.InvoiceStatus.invoiceAvailable &&
+                                (e.invoiceCloudFileId != null || e.invoiceFilePath != null)) ...[
+                              PopupMenuItem(value: 'view_image', child: Text(l10n?.viewInvoice ?? 'View Invoice')),
+                              PopupMenuItem(
+                                value: 'delete_invoice',
+                                child: Text(
+                                  l10n?.deleteInvoice ?? 'Delete Invoice',
+                                  style: const TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -974,15 +1191,8 @@ class _ExpensePageState extends State<ExpensePage> {
       ], // Close children
     ); // Close ListView
 
-    // Wrap with RefreshIndicator only for user flavor
-    if (FlavorConfig.instance.isAdmin) {
-      return listView;
-    } else {
-      return RefreshIndicator(
-        onRefresh: _handleRefresh,
-        child: listView,
-      );
-    }
+    // Return ListView directly without RefreshIndicator
+    return listView;
   }
 }
 

@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/role_service.dart';
-import '../../domain/entities/audit_log.dart';
 import '../../domain/usecases/get_audit_log_details_usecase.dart';
 import '../../domain/usecases/get_audit_logs_usecase.dart';
 import 'audit_log_event.dart';

@@ -73,6 +73,16 @@ class ExpenseDto {
       expenseDateStr = expenseDateStr.split('T')[0];
     }
     
+    // Parse invoice status - infer from invoice_path if has_invoice not provided
+    bool hasInvoice = json['has_invoice'] as bool? ?? false;
+    String? invoicePath = json['invoice_path'] as String?;
+    
+    // WORKAROUND: If backend doesn't send has_invoice but invoice_path exists, infer it
+    if (!hasInvoice && invoicePath != null && invoicePath.isNotEmpty) {
+      hasInvoice = true;
+      print('[ExpenseDto] Inferred has_invoice=true from invoice_path: $invoicePath');
+    }
+    
     return ExpenseDto(
       id: json['id'] as int?,
       userId: json['user_id'] as int?,
@@ -80,8 +90,8 @@ class ExpenseDto {
       priceUsd: _parseDouble(json['price_usd']),
       priceSyp: _parseDouble(json['price_syp']),
       priceTry: _parseDouble(json['price_try']),
-      hasInvoice: json['has_invoice'] as bool? ?? false,
-      invoicePath: json['invoice_path'] as String?,
+      hasInvoice: hasInvoice,
+      invoicePath: invoicePath,
       expenseDate: expenseDateStr,
       syncStatus: json['sync_status'] as String?,
       syncedAt: DateFormatter.fromApiTimestampNullable(json['synced_at'] as String?),

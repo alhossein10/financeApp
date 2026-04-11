@@ -51,16 +51,16 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(
-          l10n.translate('admin_group.regenerate_code') ?? 'Regenerate Code',
+          l10n?.regenerateCode ?? 'Regenerate Code',
         ),
         content: Text(
-          l10n.translate('admin_group.confirm_regenerate') ??
+          l10n?.confirmRegenerate ??
               'Regenerating will invalidate the old code. Continue?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(l10n.translate('cancel') ?? 'Cancel'),
+            child: Text(l10n?.cancel ?? 'Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -71,7 +71,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
               backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
-            child: Text(l10n.translate('admin_group.regenerate_code') ?? 'Regenerate'),
+            child: Text(l10n?.regenerateCode ?? 'Regenerate'),
           ),
         ],
       ),
@@ -85,16 +85,16 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(
-          l10n.translate('admin_group.confirm_remove_title') ?? 'Remove Member',
+          l10n?.confirmRemoveTitle ?? 'Remove Member',
         ),
         content: Text(
-          l10n.translate('admin_group.confirm_remove') ??
+          l10n?.confirmRemove ??
               'Are you sure you want to remove this member from the group?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(l10n.translate('cancel') ?? 'Cancel'),
+            child: Text(l10n?.cancel ?? 'Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -105,7 +105,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
               backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
-            child: Text(l10n.translate('admin_group.remove_member') ?? 'Remove'),
+            child: Text(l10n?.removeMember ?? 'Remove'),
           ),
         ],
       ),
@@ -121,7 +121,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          l10n.translate('admin_group.group_management') ?? 'Group Management',
+          l10n?.groupManagement ?? 'Group Management',
         ),
         centerTitle: true,
         elevation: 0,
@@ -134,7 +134,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  l10n.translate('admin_group.code_regenerated') ??
+                  l10n?.codeRegenerated ??
                       'Group code regenerated successfully',
                 ),
                 backgroundColor: theme.colorScheme.primary,
@@ -145,7 +145,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  l10n.translate('admin_group.member_removed') ??
+                  l10n?.memberRemoved ??
                       'Member removed successfully',
                 ),
                 backgroundColor: theme.colorScheme.primary,
@@ -230,7 +230,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
                               : _showRegenerateConfirmation,
                           icon: const Icon(Icons.refresh),
                           label: Text(
-                            l10n.translate('admin_group.regenerate_code') ??
+                            l10n?.regenerateCode ??
                                 'Regenerate Code',
                           ),
                           style: OutlinedButton.styleFrom(
@@ -247,7 +247,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
                         _buildInfoCard(
                           context,
                           icon: Icons.people,
-                          label: l10n.translate('admin_group.members_count') ??
+                          label: l10n?.membersCount ??
                               'Members',
                           value: '${adminGroup.membersCount ?? members.length}',
                         ),
@@ -373,7 +373,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
             ElevatedButton.icon(
               onPressed: _handleRefresh,
               icon: const Icon(Icons.refresh),
-              label: Text(l10n.translate('retry') ?? 'Retry'),
+              label: Text(l10n?.retry ?? 'Retry'),
             ),
           ],
         ),
@@ -398,7 +398,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              l10n.translate('admin_group.no_group_found') ??
+              l10n?.noGroupFound ??
                   'No group found',
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
@@ -409,7 +409,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
             ElevatedButton.icon(
               onPressed: _handleRefresh,
               icon: const Icon(Icons.refresh),
-              label: Text(l10n.translate('retry') ?? 'Retry'),
+              label: Text(l10n?.retry ?? 'Retry'),
             ),
           ],
         ),

@@ -12,7 +12,8 @@ class CreateExchangeUseCase {
     int? transferId, // Optional - for balance-based exchanges
     required String targetCurrency, // 'SYP' or 'TRY'
     required double amountUsd,
-    required double exchangeRate,
+    double? exchangeRate, // Optional if convertedAmount is provided
+    double? convertedAmount, // Optional if exchangeRate is provided (Backend v3.1+)
     required DateTime exchangeDate,
     String? notes,
   }) async {
@@ -21,6 +22,7 @@ class CreateExchangeUseCase {
       targetCurrency: targetCurrency,
       amountUsd: amountUsd,
       exchangeRate: exchangeRate,
+      convertedAmount: convertedAmount,
       exchangeDate: exchangeDate,
       notes: notes,
     );

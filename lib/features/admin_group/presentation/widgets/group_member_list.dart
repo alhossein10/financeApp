@@ -14,7 +14,7 @@ class GroupMemberList extends StatefulWidget {
   final bool showRemoveButtons;
 
   const GroupMemberList({
-    Key? key,
+    super.key,
     required this.members,
     this.isLoading = false,
     this.hasMore = false,
@@ -22,7 +22,7 @@ class GroupMemberList extends StatefulWidget {
     this.onRemoveMember,
     this.currentUserId,
     this.showRemoveButtons = true,
-  }) : super(key: key);
+  });
 
   @override
   State<GroupMemberList> createState() => _GroupMemberListState();
@@ -126,7 +126,7 @@ class _GroupMemberListState extends State<GroupMemberList> {
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: AppLocalizations.of(context).translate('admin_group.search_members') ??
+                  hintText: AppLocalizations.of(context)?.searchMembers ??
                       'Search members...',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchQuery.isNotEmpty
@@ -157,9 +157,9 @@ class _GroupMemberListState extends State<GroupMemberList> {
               if (_availableDepartments.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _selectedDepartment,
+                  initialValue: _selectedDepartment,
                   decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).translate('admin_group.filter_by_department') ??
+                    labelText: AppLocalizations.of(context)?.filterByDepartment ??
                         'Filter by Department',
                     prefixIcon: const Icon(Icons.filter_list),
                     border: OutlineInputBorder(
@@ -172,7 +172,7 @@ class _GroupMemberListState extends State<GroupMemberList> {
                     DropdownMenuItem<String>(
                       value: null,
                       child: Text(
-                        AppLocalizations.of(context).translate('admin_group.all_departments') ??
+                        AppLocalizations.of(context)?.allDepartments ??
                             'All Departments',
                       ),
                     ),
@@ -181,7 +181,7 @@ class _GroupMemberListState extends State<GroupMemberList> {
                         value: dept,
                         child: Text(dept),
                       );
-                    }).toList(),
+                    }),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -198,7 +198,7 @@ class _GroupMemberListState extends State<GroupMemberList> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
-            '${filteredMembers.length} ${AppLocalizations.of(context).translate('admin_group.members_count') ?? 'members'}',
+            '${filteredMembers.length} ${AppLocalizations.of(context)?.membersCount ?? 'members'}',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.7),
               fontWeight: FontWeight.w500,
@@ -229,7 +229,7 @@ class _GroupMemberListState extends State<GroupMemberList> {
                   ? () => widget.onRemoveMember!(member.id)
                   : null,
             );
-          }).toList(),
+          }),
 
         // Loading indicator for pagination
         if (widget.hasMore && filteredMembers.isNotEmpty)
@@ -250,15 +250,15 @@ class _GroupMemberListState extends State<GroupMemberList> {
     IconData icon;
     
     if (_searchQuery.isNotEmpty || _selectedDepartment != null) {
-      message = AppLocalizations.of(context).translate('admin_group.no_members_found') ??
+      message = AppLocalizations.of(context)?.noMembersFound ??
           'No members found matching your filters';
       icon = Icons.search_off;
     } else if (widget.members.isEmpty && !widget.isLoading) {
-      message = AppLocalizations.of(context).translate('admin_group.no_members_yet') ??
+      message = AppLocalizations.of(context)?.noMembersYet ??
           'No members in this group yet';
       icon = Icons.people_outline;
     } else {
-      message = AppLocalizations.of(context).translate('admin_group.loading_members') ??
+      message = AppLocalizations.of(context)?.loadingMembers ??
           'Loading members...';
       icon = Icons.hourglass_empty;
     }
@@ -294,7 +294,7 @@ class _GroupMemberListState extends State<GroupMemberList> {
                 },
                 icon: const Icon(Icons.clear_all),
                 label: Text(
-                  AppLocalizations.of(context).translate('admin_group.clear_filters') ??
+                  AppLocalizations.of(context)?.clearFilters ??
                       'Clear Filters',
                 ),
               ),

@@ -4,13 +4,16 @@ import '../../../../core/error/failures.dart';
 import '../../../../core/services/queue_manager.dart';
 import '../../../../core/services/sync_service.dart';
 import '../../../../core/utils/error_handler.dart';
-import '../../domain/entities/expense.dart';
+import '../../../../core/utils/secure_logger.dart';
+import '../../domain/entities/expense.dart' as domain;
 import '../../domain/usecases/create_expense_usecase.dart';
 import '../../domain/usecases/delete_expense_usecase.dart';
 import '../../domain/usecases/get_expenses_usecase.dart';
 import '../../domain/usecases/update_expense_usecase.dart';
 import 'expense_event.dart';
 import 'expense_state.dart';
+
+const String _logTag = 'ExpenseBloc';
 
 class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
   final CreateExpenseUseCase createExpenseUseCase;
@@ -22,7 +25,10 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
 
   StreamSubscription? _syncStatusSubscription;
   StreamSubscription? _queueStatusSubscription;
-  final Map<int, SyncStatus> _syncStatusMap = {};
+
+  /// Map to track individual expense sync status subscriptions to prevent memory leaks
+  final Map<int, StreamSubscription> _expenseSyncSubscriptions = {};
+  final Map<int, domain.SyncStatus> _syncStatusMap = {};
 
   ExpenseBloc({
     required this.createExpenseUseCase,
@@ -52,7 +58,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     CreateExpenseRequested event,
     Emitter<ExpenseState> emit,
   ) async {
-    print('[ExpenseBloc] Creating expense: ${event.description}');
+    SecureLogger.debug(_logTag, 'Creating expense');
     emit(ExpenseLoading(syncStatusMap: _syncStatusMap));
 
     final params = CreateExpenseParams(
@@ -70,15 +76,12 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
 
     result.fold(
       (failure) {
-        print('[ExpenseBloc] ❌ Failed to create expense: ${failure.message}');
+        SecureLogger.error(_logTag, 'Failed to create expense', failure);
         _handleError(failure, emit);
       },
       (expense) {
-        print('[ExpenseBloc] ✅ Expense created successfully!');
-        print('[ExpenseBloc]    ID: ${expense.id}');
-        print('[ExpenseBloc]    Description: ${expense.description}');
-        print('[ExpenseBloc]    USD: ${expense.priceUsd}, SYP: ${expense.priceSyp}, TRY: ${expense.priceTry}');
-        
+        SecureLogger.success(_logTag, 'Expense created successfully');
+
         // Start watching sync status for this expense
         if (expense.id != null) {
           _watchExpenseSyncStatus(expense.id!);
@@ -92,12 +95,30 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     LoadExpensesRequested event,
     Emitter<ExpenseState> emit,
   ) async {
-    emit(ExpenseLoading(syncStatusMap: _syncStatusMap));
+    // Preserve current expenses if they exist to avoid clearing UI during refresh
+    final currentState = state;
+    List<domain.Expense>? previousExpenses;
+    if (currentState is ExpenseLoaded) {
+      previousExpenses = currentState.expenses;
+      // Emit loading state with previous expenses preserved
+      emit(ExpenseLoading(
+        syncStatusMap: _syncStatusMap,
+        previousExpenses: previousExpenses,
+      ));
+    } else {
+      emit(ExpenseLoading(syncStatusMap: _syncStatusMap, previousExpenses: null));
+    }
 
     final result = await getExpensesUseCase(event.userId);
 
     result.fold(
-      (failure) => _handleError(failure, emit),
+      (failure) {
+        // On error, restore previous expenses if they existed
+        if (previousExpenses != null) {
+          emit(ExpenseLoaded(previousExpenses, syncStatusMap: _syncStatusMap));
+        }
+        _handleError(failure, emit);
+      },
       (expenses) {
         // Watch sync status for all loaded expenses
         for (final expense in expenses) {
@@ -196,8 +217,13 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
   }
 
   /// Watch sync status for a specific expense
+  /// Properly manages subscriptions to prevent memory leaks
   void _watchExpenseSyncStatus(int expenseId) {
-    syncService.watchSyncStatus(expenseId).listen((status) {
+    // Cancel existing subscription for this expense if any
+    _expenseSyncSubscriptions[expenseId]?.cancel();
+
+    // Create new subscription and store it
+    _expenseSyncSubscriptions[expenseId] = syncService.watchSyncStatus(expenseId).listen((status) {
       add(SyncStatusUpdated({expenseId: status}));
     });
   }
@@ -273,6 +299,13 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
   Future<void> close() {
     _syncStatusSubscription?.cancel();
     _queueStatusSubscription?.cancel();
+
+    // Cancel all expense sync subscriptions to prevent memory leaks
+    for (final subscription in _expenseSyncSubscriptions.values) {
+      subscription.cancel();
+    }
+    _expenseSyncSubscriptions.clear();
+
     return super.close();
   }
 }

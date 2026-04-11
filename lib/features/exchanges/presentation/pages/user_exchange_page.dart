@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/extensions/localization_extension.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../fund_box/presentation/bloc/fund_box_bloc.dart';
 import '../../../fund_box/presentation/bloc/fund_box_event.dart';
 import '../../../fund_box/presentation/bloc/fund_box_state.dart';
@@ -11,6 +11,8 @@ import '../bloc/exchange_bloc.dart';
 import '../bloc/exchange_event.dart';
 import '../bloc/exchange_state.dart';
 import '../../../../core/widgets/watermark_background.dart';
+import 'exchange_history_page.dart';
+import '../widgets/exchange_form.dart';
 
 /// User Exchange Page - Create exchanges based on total USD balance
 /// Shows total USD balance and allows creating exchanges
@@ -24,7 +26,7 @@ class UserExchangePage extends StatefulWidget {
 class _UserExchangePageState extends State<UserExchangePage> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
-  final _exchangeRateController = TextEditingController();
+  final _convertedAmountController = TextEditingController(); // Changed from exchangeRateController
   final _notesController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   String _targetCurrency = 'SYP'; // Default to SYP
@@ -57,7 +59,7 @@ class _UserExchangePageState extends State<UserExchangePage> {
   @override
   void dispose() {
     _amountController.dispose();
-    _exchangeRateController.dispose();
+    _convertedAmountController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -80,7 +82,20 @@ class _UserExchangePageState extends State<UserExchangePage> {
   void _createExchange() {
     if (_formKey.currentState?.validate() ?? false) {
       final amountUsd = double.tryParse(_amountController.text) ?? 0.0;
-      final exchangeRate = double.tryParse(_exchangeRateController.text) ?? 0.0;
+      final convertedAmount = double.tryParse(_convertedAmountController.text) ?? 0.0;
+
+      // Validate amount
+      if (amountUsd <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.translate('invalid_amount'),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
       // Get current fund box balance
       final fundBoxState = context.read<FundBoxBloc>().state;
@@ -94,7 +109,7 @@ class _UserExchangePageState extends State<UserExchangePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${AppLocalizations.of(context).translate('amount_exceeds_balance') ?? 'Amount exceeds available balance'} \$${maxUsdBalance.toStringAsFixed(2)}',
+              '${AppLocalizations.of(context)!.translate('amount_exceeds_balance')} \$${maxUsdBalance.toStringAsFixed(2)}',
             ),
             backgroundColor: Colors.red,
           ),
@@ -103,12 +118,14 @@ class _UserExchangePageState extends State<UserExchangePage> {
       }
 
       // Create exchange without transferId (balance-based)
+      // Send converted_amount directly instead of exchange_rate (Backend v3.1+)
       context.read<ExchangeBloc>().add(
         CreateExchangeEvent(
           transferId: null, // No transfer - balance-based exchange
           targetCurrency: _targetCurrency,
           amountUsd: amountUsd,
-          exchangeRate: exchangeRate,
+          exchangeRate: null, // Not needed when convertedAmount is provided
+          convertedAmount: convertedAmount, // Send converted amount directly
           exchangeDate: _selectedDate,
           notes: _notesController.text.isEmpty ? null : _notesController.text,
         ),
@@ -132,12 +149,31 @@ class _UserExchangePageState extends State<UserExchangePage> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = AppLocalizations.of(context)!;
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.translate('create_exchange') ?? 'Create Exchange'),
+        title: Text(l10n.translate('create_exchange')),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: l10n.translate('exchange_history'),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (dialogContext) => Dialog(
+                  insetPadding: const EdgeInsets.all(16),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
+                    child: BlocProvider.value(
+                      value: context.read<ExchangeBloc>(),
+                      child: const ExchangeHistoryPage(),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -150,17 +186,17 @@ class _UserExchangePageState extends State<UserExchangePage> {
         child: BlocListener<ExchangeBloc, ExchangeState>(
             listener: (context, state) {
               if (state is ExchangeCreated) {
-                final l10n = AppLocalizations.of(context);
+                final l10n = AppLocalizations.of(context)!;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(l10n.translate('exchange_created_success') ?? 'Exchange created successfully!'),
+                    content: Text(l10n.translate('exchange_created_success')),
                     backgroundColor: Colors.green,
                   ),
                 );
                 
                 // Clear form
                 _amountController.clear();
-                _exchangeRateController.clear();
+                _convertedAmountController.clear();
                 _notesController.clear();
                 _selectedDate = DateTime.now();
                 
@@ -170,10 +206,10 @@ class _UserExchangePageState extends State<UserExchangePage> {
                 // Reset exchange state
                 context.read<ExchangeBloc>().add(const ResetExchangeStateEvent());
               } else if (state is ExchangeError) {
-                final l10n = AppLocalizations.of(context);
+                final l10n = AppLocalizations.of(context)!;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('${l10n.translate('error') ?? 'Error'}: ${state.message}'),
+                    content: Text('${l10n.translate('error')}: ${state.message}'),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -205,7 +241,7 @@ class _UserExchangePageState extends State<UserExchangePage> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    l10n.translate('available_balance') ?? 'Available Balance',
+                                    l10n.translate('available_balance'),
                                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -213,7 +249,7 @@ class _UserExchangePageState extends State<UserExchangePage> {
                                   IconButton(
                                     icon: const Icon(Icons.close, size: 20),
                                     onPressed: _toggleBalanceCard,
-                                    tooltip: l10n.translate('hide') ?? 'Hide',
+                                    tooltip: l10n.translate('hide'),
                                   ),
                                 ],
                               ),
@@ -291,16 +327,16 @@ class _UserExchangePageState extends State<UserExchangePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l10n.translate('exchange_details') ?? 'Exchange Details',
+                          l10n.translate('exchange_details'),
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Target Currency Selection
                         DropdownButtonFormField<String>(
                           initialValue: _targetCurrency,
                           decoration: InputDecoration(
-                            labelText: l10n.translate('target_currency') ?? 'Target Currency',
+                            labelText: l10n.translate('target_currency'),
                             prefixIcon: const Icon(Icons.currency_exchange),
                             border: const OutlineInputBorder(),
                           ),
@@ -336,24 +372,24 @@ class _UserExchangePageState extends State<UserExchangePage> {
                             return TextFormField(
                               controller: _amountController,
                               decoration: InputDecoration(
-                                labelText: l10n.translate('amount_usd') ?? 'Amount (USD)',
+                                labelText: l10n.translate('amount_usd'),
                                 prefixIcon: const Icon(Icons.attach_money),
                                 border: const OutlineInputBorder(),
-                                helperText: maxUsdBalance > 0 
-                                    ? '${l10n.translate('max') ?? 'Max'}: \$${maxUsdBalance.toStringAsFixed(2)}'
+                                helperText: maxUsdBalance > 0
+                                    ? '${l10n.translate('max')}: \$${maxUsdBalance.toStringAsFixed(2)}'
                                     : null,
                               ),
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return l10n.translate('please_enter_amount') ?? 'Please enter amount';
+                                  return l10n.translate('please_enter_amount');
                                 }
                                 final amount = double.tryParse(value);
                                 if (amount == null || amount <= 0) {
-                                  return l10n.translate('invalid_amount') ?? 'Invalid amount';
+                                  return l10n.translate('invalid_amount');
                                 }
                                 if (maxUsdBalance > 0 && amount > maxUsdBalance) {
-                                  return '${l10n.translate('amount_exceeds_balance') ?? 'Amount exceeds available balance'} (\$${maxUsdBalance.toStringAsFixed(2)})';
+                                  return '${l10n.translate('amount_exceeds_balance')} (\$${maxUsdBalance.toStringAsFixed(2)})';
                                 }
                                 return null;
                               },
@@ -363,35 +399,84 @@ class _UserExchangePageState extends State<UserExchangePage> {
                         
                         const SizedBox(height: 16),
                         
-                        // Exchange Rate
+                        // Converted Amount (المبلغ المصرف)
                         TextFormField(
-                          controller: _exchangeRateController,
+                          controller: _convertedAmountController,
                           decoration: InputDecoration(
-                            labelText: l10n.translate('exchange_rate') ?? 'Exchange Rate (1 USD = ? $_targetCurrency)',
+                            labelText: _targetCurrency == 'SYP'
+                                ? l10n.translate('amount_syp')
+                                : l10n.translate('amount_try'),
                             prefixIcon: const Icon(Icons.currency_exchange),
                             border: const OutlineInputBorder(),
+                            helperText: _targetCurrency == 'SYP' 
+                                ? 'أدخل المبلغ بالليرة السورية'
+                                : 'أدخل المبلغ بالليرة التركية',
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return l10n.translate('please_enter_rate') ?? 'Please enter exchange rate';
+                              return _targetCurrency == 'SYP'
+                                  ? 'يرجى إدخال المبلغ بالليرة السورية'
+                                  : 'يرجى إدخال المبلغ بالليرة التركية';
                             }
-                            final rate = double.tryParse(value);
-                            if (rate == null || rate <= 0) {
-                              return l10n.translate('invalid_rate') ?? 'Invalid exchange rate';
+                            final amount = double.tryParse(value);
+                            if (amount == null || amount <= 0) {
+                              return 'المبلغ غير صحيح';
                             }
                             return null;
+                          },
+                          onChanged: (value) {
+                            // Update UI to show calculated exchange rate
+                            setState(() {});
                           },
                         ),
                         
                         const SizedBox(height: 16),
+                        
+                        // Calculated Exchange Rate (display only)
+                        if (_amountController.text.isNotEmpty && 
+                            _convertedAmountController.text.isNotEmpty &&
+                            double.tryParse(_amountController.text) != null &&
+                            double.tryParse(_amountController.text)! > 0 &&
+                            double.tryParse(_convertedAmountController.text) != null)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  l10n.translate('exchange_rate'),
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  '1 USD = ${NumberFormat('#,###.##').format(
+                                    (double.tryParse(_convertedAmountController.text) ?? 0) /
+                                    (double.tryParse(_amountController.text) ?? 1)
+                                  )} $_targetCurrency',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        
+                        if (_amountController.text.isNotEmpty && 
+                            _convertedAmountController.text.isNotEmpty)
+                          const SizedBox(height: 16),
                         
                         // Exchange Date
                         InkWell(
                           onTap: () => _selectDate(context),
                           child: InputDecorator(
                             decoration: InputDecoration(
-                              labelText: l10n.translate('exchange_date') ?? 'Exchange Date',
+                              labelText: l10n.translate('exchange_date'),
                               prefixIcon: const Icon(Icons.calendar_today),
                               border: const OutlineInputBorder(),
                             ),
@@ -407,44 +492,12 @@ class _UserExchangePageState extends State<UserExchangePage> {
                         TextFormField(
                           controller: _notesController,
                           decoration: InputDecoration(
-                            labelText: l10n.translate('notes') ?? 'Notes (Optional)',
+                            labelText: l10n.translate('notes'),
                             prefixIcon: const Icon(Icons.note),
                             border: const OutlineInputBorder(),
                           ),
                           maxLines: 3,
                         ),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Calculated Amount in Target Currency
-                        if (_amountController.text.isNotEmpty && _exchangeRateController.text.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '${l10n.translate('amount') ?? 'Amount'} in $_targetCurrency:',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                Text(
-                                  NumberFormat('#,###.##').format(
-                                    (double.tryParse(_amountController.text) ?? 0) *
-                                    (double.tryParse(_exchangeRateController.text) ?? 0),
-                                  ),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                         
                         const SizedBox(height: 24),
                         
@@ -466,7 +519,7 @@ class _UserExchangePageState extends State<UserExchangePage> {
                                         child: CircularProgressIndicator(strokeWidth: 2),
                                       )
                                     : Text(
-                                        l10n.translate('create_exchange') ?? 'Create Exchange',
+                                        l10n.translate('create_exchange'),
                                         style: const TextStyle(fontSize: 16),
                                       ),
                               ),

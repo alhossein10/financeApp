@@ -10,7 +10,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import '../data/db.dart';
 import '../core/config/flavor_config.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/bloc/auth_state.dart';
@@ -18,7 +17,6 @@ import '../features/admin/presentation/bloc/admin_bloc.dart';
 import '../features/admin/presentation/bloc/admin_state.dart';
 import '../features/admin/presentation/bloc/admin_event.dart';
 import '../features/expenses/presentation/bloc/expense_bloc.dart';
-import '../features/expenses/presentation/bloc/expense_event.dart';
 import '../features/expenses/presentation/bloc/expense_state.dart';
 import '../features/exchanges/presentation/bloc/exchange_bloc.dart';
 import '../features/exchanges/presentation/bloc/exchange_state.dart';
@@ -583,7 +581,7 @@ class _ExportPageNewState extends State<ExportPageNew> {
                   return Container(
                     padding: const EdgeInsets.all(16),
                     child: DropdownButtonFormField<int?>(
-                      value: _selectedUserId,
+                      initialValue: _selectedUserId,
                       decoration: InputDecoration(
                         labelText: l10n.translate('filter_by_user') ?? 'Filter by User',
                         border: const OutlineInputBorder(),

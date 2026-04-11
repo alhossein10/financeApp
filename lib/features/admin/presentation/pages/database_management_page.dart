@@ -32,7 +32,7 @@ class _DatabaseManagementPageState extends State<DatabaseManagementPage> {
       setState(() => _loading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${AppLocalizations.of(context).translate('error_loading_stats') ?? 'Error loading stats'}: $e')),
+          SnackBar(content: Text('${AppLocalizations.of(context)?.errorLoadingStats ?? 'Error loading stats'}: $e')),
         );
       }
     }
@@ -45,9 +45,9 @@ class _DatabaseManagementPageState extends State<DatabaseManagementPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(AppLocalizations.of(context).translate('clear_all_data') ?? 'Clear All Data'),
+        title: Text(AppLocalizations.of(context)?.clearAllData ?? 'Clear All Data'),
         content: Text(
-          AppLocalizations.of(context).translate('clear_all_data_warning') ?? 'This will delete ALL data from the database including:\n\n'
+          AppLocalizations.of(context)?.clearAllDataWarning ?? 'This will delete ALL data from the database including:\n\n'
           '• All users (except default user)\n'
           '• All expenses\n'
           '• All transfers\n'
@@ -59,14 +59,14 @@ class _DatabaseManagementPageState extends State<DatabaseManagementPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.translate('cancel')),
+            child: Text(l10n?.cancel ?? 'Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            child: Text(AppLocalizations.of(context).translate('delete_all_data') ?? 'Delete All Data'),
+            child: Text(AppLocalizations.of(context)?.deleteAllData ?? 'Delete All Data'),
           ),
         ],
       ),
@@ -82,7 +82,7 @@ class _DatabaseManagementPageState extends State<DatabaseManagementPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).translate('all_data_cleared') ?? '✓ All data cleared successfully'),
+            content: Text(AppLocalizations.of(context)?.allDataCleared ?? '✓ All data cleared successfully'),
             backgroundColor: Colors.green,
           ),
         );
@@ -95,7 +95,7 @@ class _DatabaseManagementPageState extends State<DatabaseManagementPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_clearing_data') ?? 'Error clearing data'}: $e'),
+            content: Text('${AppLocalizations.of(context)?.errorClearingData ?? 'Error clearing data'}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -109,7 +109,7 @@ class _DatabaseManagementPageState extends State<DatabaseManagementPage> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context).translate('database_management') ?? 'Database Management'),
+        title: Text(AppLocalizations.of(context)?.databaseManagement ?? 'Database Management'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -194,7 +194,7 @@ class _DatabaseManagementPageState extends State<DatabaseManagementPage> {
                                 backgroundColor: Colors.red,
                               ),
                               icon: const Icon(Icons.delete_forever),
-                              label: Text(AppLocalizations.of(context).translate('clear_all_data') ?? 'Clear All Data'),
+                              label: Text(AppLocalizations.of(context)?.clearAllData ?? 'Clear All Data'),
                             ),
                           ),
                         ],

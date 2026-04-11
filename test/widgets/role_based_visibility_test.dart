@@ -49,8 +49,8 @@ void main() {
           body: RoleBasedWidget(
             adminOnly: adminOnly,
             userOnly: userOnly,
-            child: child,
             fallback: fallback,
+            child: child,
           ),
         ),
       ),
@@ -447,8 +447,8 @@ void main() {
                 body: Column(
                   children: [
                     RoleBasedWidget.adminOnly(
-                      child: const Text('Welcome, Administrator'),
                       fallback: const Text('Welcome, User'),
+                      child: const Text('Welcome, Administrator'),
                     ),
                   ],
                 ),
@@ -474,8 +474,8 @@ void main() {
                 body: Column(
                   children: [
                     RoleBasedWidget.adminOnly(
-                      child: const Text('Welcome, Administrator'),
                       fallback: const Text('Welcome, User'),
+                      child: const Text('Welcome, Administrator'),
                     ),
                   ],
                 ),
@@ -565,8 +565,8 @@ void main() {
               value: mockAuthBloc,
               child: Scaffold(
                 body: RoleBasedWidget.adminOnly(
-                  child: const Text('Admin Content'),
                   fallback: const Text('User Content'),
+                  child: const Text('Admin Content'),
                 ),
               ),
             ),
@@ -588,8 +588,8 @@ void main() {
               value: mockAuthBloc,
               child: Scaffold(
                 body: RoleBasedWidget.adminOnly(
-                  child: const Text('Admin Content'),
                   fallback: const Text('User Content'),
+                  child: const Text('Admin Content'),
                 ),
               ),
             ),

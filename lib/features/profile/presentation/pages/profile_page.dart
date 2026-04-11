@@ -13,10 +13,13 @@ import '../bloc/profile_state.dart';
 import '../widgets/profile_info_card.dart';
 import '../widgets/profile_statistics_card.dart';
 import '../widgets/edit_profile_dialog.dart';
+import '../widgets/change_password_dialog.dart';
+import '../widgets/delete_account_dialog.dart';
 import '../../../../core/widgets/watermark_background.dart';
 import '../../../../core/config/flavor_config.dart';
 import '../../../admin_group/presentation/pages/join_superadmin_group_page.dart';
 import '../../../admin_group/presentation/bloc/admin_group_bloc.dart';
+import '../../../settings/presentation/pages/language_settings_page.dart';
 
 /// Profile page showing user information and statistics
 class ProfilePage extends StatelessWidget {
@@ -70,6 +73,20 @@ class ProfileView extends StatelessWidget {
                 backgroundColor: Colors.green,
               ),
             );
+          } else if (state is ProfilePhotoUploadSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile photo uploaded successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else if (state is ProfilePhotoDeleteSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile photo deleted successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
           }
         },
         builder: (context, state) {
@@ -112,12 +129,18 @@ class ProfileView extends StatelessWidget {
 
           if (state is ProfileLoaded ||
               state is ProfileUpdateSuccess ||
-              state is ProfilePictureUpdateSuccess) {
+              state is ProfilePictureUpdateSuccess ||
+              state is ProfilePhotoUploadSuccess ||
+              state is ProfilePhotoDeleteSuccess) {
             final profileData = state is ProfileLoaded
                 ? state.profileData
                 : state is ProfileUpdateSuccess
                     ? state.profileData
-                    : (state as ProfilePictureUpdateSuccess).profileData;
+                    : state is ProfilePictureUpdateSuccess
+                        ? state.profileData
+                        : state is ProfilePhotoUploadSuccess
+                            ? state.profileData
+                            : (state as ProfilePhotoDeleteSuccess).profileData;
 
             return RefreshIndicator(
               onRefresh: () async {
@@ -134,6 +157,12 @@ class ProfileView extends StatelessWidget {
                       user: profileData.user,
                       onEditPressed: () => _showEditProfileDialog(context, profileData.user),
                       onProfilePicturePressed: () => _showProfilePictureOptions(context),
+                      uploadService: di.sl(),
+                      onImageUploaded: (imageUrl) {
+                        // The upload service already uploaded the image and got the URL
+                        // Now we just need to reload the profile to get the updated data
+                        context.read<ProfileBloc>().add(const ProfileLoadRequested());
+                      },
                     ),
                     const SizedBox(height: 16),
                     
@@ -142,6 +171,30 @@ class ProfileView extends StatelessWidget {
                       statistics: profileData.statistics,
                     ),
                     const SizedBox(height: 24),
+                    
+                    // Change Password Button
+                    OutlinedButton.icon(
+                      onPressed: () => _showChangePasswordDialog(context),
+                      icon: const Icon(Icons.lock_outline),
+                      label: const Text('Change Password'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Language Settings Button
+                    OutlinedButton.icon(
+                      onPressed: () => _openLanguageSettings(context),
+                      icon: const Icon(Icons.language),
+                      label: Text(
+                        'Language Settings',
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     
                     // View Tutorial Button
                     OutlinedButton.icon(
@@ -188,7 +241,7 @@ class ProfileView extends StatelessWidget {
                         onPressed: () => _openJoinGroup(context),
                         icon: const Icon(Icons.group_add),
                         label: Text(
-                          AppLocalizations.of(context).translate('admin_group.join_group') ?? 'Join a Group',
+                          AppLocalizations.of(context)?.joinGroup ?? 'Join a Group',
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
@@ -238,6 +291,19 @@ class ProfileView extends StatelessWidget {
                       const SizedBox(height: 12),
                     ],
                     
+                    // Delete Account Button
+                    OutlinedButton.icon(
+                      onPressed: () => _showDeleteAccountDialog(context),
+                      icon: const Icon(Icons.delete_forever),
+                      label: const Text('Delete Account'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    
                     // Logout Button
                     ElevatedButton.icon(
                       onPressed: () => _showLogoutDialog(context),
@@ -268,6 +334,32 @@ class ProfileView extends StatelessWidget {
       builder: (dialogContext) => BlocProvider.value(
         value: context.read<ProfileBloc>(),
         child: EditProfileDialog(user: user),
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: context.read<ProfileBloc>()),
+          BlocProvider.value(value: context.read<AuthBloc>()),
+        ],
+        child: const ChangePasswordDialog(),
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: context.read<ProfileBloc>()),
+          BlocProvider.value(value: context.read<AuthBloc>()),
+        ],
+        child: const DeleteAccountDialog(),
       ),
     );
   }
@@ -336,6 +428,15 @@ class ProfileView extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => const OnboardingPage(),
+      ),
+    );
+  }
+
+  void _openLanguageSettings(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LanguageSettingsPage(),
       ),
     );
   }
@@ -425,7 +526,7 @@ class ProfileView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            l10n.translate('admin_group.not_in_group') ?? 'You are not part of any group',
+            l10n?.notInGroup ?? 'You are not part of any group',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -433,7 +534,7 @@ class ProfileView extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            l10n.translate('admin_group.not_in_group_desc') ?? 
+            l10n?.notInGroupDesc ?? 
                 'Join a group using a code provided by your admin to access shared financial data.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.grey[600],

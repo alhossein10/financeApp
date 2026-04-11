@@ -2,5 +2,5 @@
 
 // User flavor configuration
 PRODUCT_BUNDLE_IDENTIFIER = com.app.finance.user
-APP_DISPLAY_NAME = Finance
+APP_DISPLAY_NAME = الإدارة المالية
 FLUTTER_TARGET = lib/main_user.dart

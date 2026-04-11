@@ -1,11 +1,11 @@
 {
-    "name": "MyFinance - Multi-User Finance Manager",
-    "short_name": "MyFinance",
+    "name": "الإدارة المالية",
+    "short_name": "الإدارة المالية",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Manage your finances easily and securely with multi-user support",
+    "description": "نظام إدارة مالية متعدد المستخدمين",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

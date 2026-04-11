@@ -93,7 +93,7 @@ void main() {
                           if (expense.priceTry != null) '${expense.priceTry!.toStringAsFixed(2)} TRY',
                         ].join(' • '),
                       ),
-                      trailing: _buildSyncStatusBadge(expense.syncStatus),
+                      trailing: buildSyncStatusBadge(expense.syncStatus),
                     );
                   },
                 );
@@ -107,7 +107,7 @@ void main() {
     );
   }
 
-  static Widget _buildSyncStatusBadge(SyncStatus status) {
+  Widget buildSyncStatusBadge(SyncStatus status) {
     Color color;
     String text;
     

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../models/conflict_resolution.dart';
@@ -91,7 +92,10 @@ class ConflictResolutionService {
         final response = await resolveConflict(conflict, defaultStrategy);
         responses.add(response);
       } catch (e) {
-        ApiLogger.logError(e);
+        // Log error if it's a DioException, otherwise just continue
+        if (e is DioException) {
+          ApiLogger.logError(e);
+        }
         // Add failed response
         responses.add(ConflictResolutionResponse(
           success: false,

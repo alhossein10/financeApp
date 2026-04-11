@@ -1,6 +1,0 @@
-#include "Generated.xcconfig"
-
-// Admin flavor configuration
-PRODUCT_BUNDLE_IDENTIFIER = com.app.finance.admin
-APP_DISPLAY_NAME = Finance Admin
-FLUTTER_TARGET = lib/main_admin.dart

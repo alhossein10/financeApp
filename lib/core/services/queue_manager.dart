@@ -16,6 +16,7 @@ abstract class QueueManager {
   Stream<QueueStatus> get queueStatus;
   Future<void> initialize();
   Future<void> dispose();
+  Future<void> updateItemStatus(String id, QueueStatus status, {String? errorMessage});
 }
 
 class QueueManagerImpl implements QueueManager {

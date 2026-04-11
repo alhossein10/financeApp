@@ -6,6 +6,7 @@ class GroupMember extends Equatable {
   final String name;
   final String email;
   final String role;
+  final String? profileImageUrl;
   final String? organizationName;
   final String? departmentName;
   final DateTime createdAt;
@@ -15,6 +16,7 @@ class GroupMember extends Equatable {
     required this.name,
     required this.email,
     required this.role,
+    this.profileImageUrl,
     this.organizationName,
     this.departmentName,
     required this.createdAt,
@@ -29,6 +31,7 @@ class GroupMember extends Equatable {
     String? name,
     String? email,
     String? role,
+    String? profileImageUrl,
     String? organizationName,
     String? departmentName,
     DateTime? createdAt,
@@ -38,6 +41,7 @@ class GroupMember extends Equatable {
       name: name ?? this.name,
       email: email ?? this.email,
       role: role ?? this.role,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       organizationName: organizationName ?? this.organizationName,
       departmentName: departmentName ?? this.departmentName,
       createdAt: createdAt ?? this.createdAt,
@@ -50,6 +54,7 @@ class GroupMember extends Equatable {
         name,
         email,
         role,
+        profileImageUrl,
         organizationName,
         departmentName,
         createdAt,

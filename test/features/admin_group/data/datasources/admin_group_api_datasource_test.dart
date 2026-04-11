@@ -3,9 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finance_app/core/api/api_client.dart';
 import 'package:finance_app/core/api/api_exception.dart';
 import 'package:finance_app/features/admin_group/data/datasources/admin_group_api_datasource.dart';
-import 'package:finance_app/features/admin_group/data/models/admin_group_dto.dart';
-import 'package:finance_app/features/admin_group/data/models/group_member_dto.dart';
-import 'package:finance_app/features/admin_group/data/models/group_info_dto.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 

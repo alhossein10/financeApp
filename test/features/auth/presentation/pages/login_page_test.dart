@@ -7,7 +7,6 @@ import 'package:finance_app/features/auth/presentation/pages/login_page.dart';
 import 'package:finance_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:finance_app/features/auth/presentation/bloc/auth_event.dart';
 import 'package:finance_app/features/auth/presentation/bloc/auth_state.dart';
-import 'package:finance_app/features/auth/domain/entities/user.dart';
 
 class MockAuthBloc extends Mock implements AuthBloc {}
 

@@ -1,8 +1,12 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../utils/api_logger.dart';
+import '../services/token_manager.dart';
+import '../services/certificate_pinning_service.dart';
 import 'api_exception.dart';
+import 'bearer_token_interceptor.dart';
 
 /// Abstract API Client interface
 abstract class ApiClient {
@@ -50,19 +54,42 @@ abstract class ApiClient {
 class DioApiClient implements ApiClient {
   late final Dio _dio;
   String? _authToken;
+  final TokenManager? _tokenManager;
+  final Future<void> Function()? _onTokenRefreshFailed;
+  BearerTokenInterceptor? _bearerTokenInterceptor;
 
   DioApiClient({
     Dio? dio,
     String? baseUrl,
-  }) {
+    TokenManager? tokenManager,
+    Future<void> Function()? onTokenRefreshFailed,
+    bool enableCertificatePinning = true,
+    List<String>? allowedCertificateFingerprints,
+  })  : _tokenManager = tokenManager,
+        _onTokenRefreshFailed = onTokenRefreshFailed {
     _dio = dio ?? Dio();
     _configureDio(baseUrl);
+    
+    // Configure certificate pinning if enabled
+    if (enableCertificatePinning) {
+      _configureCertificatePinning(allowedCertificateFingerprints);
+    }
   }
 
   /// Configure Dio with base options and interceptors
   void _configureDio(String? baseUrl) {
+    final url = baseUrl ?? ApiConfig.apiUrl;
+    
+    // Validate HTTPS (except for localhost in debug mode)
+    if (!_validateSecureUrl(url)) {
+      throw ApiException(
+        message: 'Insecure URL detected. All API calls must use HTTPS.',
+        statusCode: 0,
+      );
+    }
+    
     _dio.options = BaseOptions(
-      baseUrl: baseUrl ?? ApiConfig.apiUrl,
+      baseUrl: url,
       connectTimeout: ApiConfig.connectTimeout,
       receiveTimeout: ApiConfig.receiveTimeout,
       sendTimeout: ApiConfig.sendTimeout,
@@ -76,10 +103,30 @@ class DioApiClient implements ApiClient {
       },
     );
 
-    // Add interceptors
+    // Add interceptors in correct order:
+    // 1. Logging (request/response logging)
+    // 2. Bearer Token (authentication)
+    // 3. Error Handling (retry logic)
     _dio.interceptors.clear();
+    
+    // 1. Logging interceptor (first to log all requests)
     _dio.interceptors.add(_createRequestInterceptor());
     _dio.interceptors.add(_createResponseInterceptor());
+    
+    // 2. Bearer Token interceptor (adds authentication)
+    if (_tokenManager != null) {
+      _bearerTokenInterceptor = BearerTokenInterceptor(
+        tokenManager: _tokenManager!,
+        dio: _dio,
+        onTokenRefreshFailed: _onTokenRefreshFailed,
+      );
+      _dio.interceptors.add(_bearerTokenInterceptor!);
+      print('[ApiClient] ✅ BearerTokenInterceptor added');
+    } else {
+      print('[ApiClient] ⚠️ TokenManager not provided, Bearer token authentication disabled');
+    }
+    
+    // 3. Error handling interceptor (last to handle all errors)
     _dio.interceptors.add(_createErrorInterceptor());
   }
 
@@ -99,35 +146,14 @@ class DioApiClient implements ApiClient {
     return authEndpoints.any((endpoint) => normalizedPath == endpoint || normalizedPath.endsWith(endpoint));
   }
 
-  /// Create request interceptor for token injection and logging
+  /// Create request interceptor for logging
+  /// Note: Token injection is now handled by BearerTokenInterceptor
   Interceptor _createRequestInterceptor() {
     return InterceptorsWrapper(
       onRequest: (options, handler) {
-        // Inject authentication token with Bearer prefix
-        if (_authToken != null && _authToken!.isNotEmpty) {
-          // Ensure Bearer prefix is included
-          final authHeader = _authToken!.startsWith('Bearer ')
-              ? _authToken!
-              : '${ApiConfig.authorizationPrefix} $_authToken';
-          
-          options.headers['Authorization'] = authHeader;
-          
-          // Log token injection (only first 20 chars for security)
-          final tokenPreview = _authToken!.length > 20 
-              ? '${_authToken!.substring(0, 20)}...' 
-              : _authToken!;
-          print('[ApiClient] ✅ Token injected: $tokenPreview');
-        } else {
-          // Only log warning for non-authentication endpoints
-          // Auth endpoints (login, register, etc.) are expected to work without tokens
-          if (!_isAuthEndpoint(options.path)) {
-            print('[ApiClient] ⚠️ No token available for request');
-          }
-        }
-
         print('[ApiClient] Request: ${options.method} ${options.uri}');
         
-        // Always log Authorization header presence (for debugging)
+        // Log Authorization header presence (for debugging)
         if (options.headers.containsKey('Authorization')) {
           final authHeader = options.headers['Authorization'] as String?;
           if (authHeader != null && authHeader.isNotEmpty) {
@@ -138,8 +164,6 @@ class DioApiClient implements ApiClient {
           } else {
             print('[ApiClient] ⚠️ Authorization header is empty');
           }
-        } else {
-          print('[ApiClient] ⚠️ Authorization header missing');
         }
         
         if (ApiConfig.enableDebugLogging) {
@@ -167,25 +191,17 @@ class DioApiClient implements ApiClient {
   }
 
   /// Create error interceptor for retry logic and error handling
+  /// Note: 401 errors are now handled by BearerTokenInterceptor
   Interceptor _createErrorInterceptor() {
     return InterceptorsWrapper(
       onError: (error, handler) async {
         // Log error
         ApiLogger.logError(error, stackTrace: error.stackTrace);
 
-        // Handle 401 Unauthorized - token expired or invalid
-        if (error.response?.statusCode == 401) {
-          print('🔴 [ApiClient] 401 Unauthorized - Token invalid or expired');
-          
-          // Clear the invalid token
-          clearAuthToken();
-          
-          // Don't retry 401 errors - let the app handle re-authentication
-          handler.next(error);
-          return;
-        }
+        // Note: 401 Unauthorized is handled by BearerTokenInterceptor
+        // which attempts token refresh before this interceptor runs
 
-        // Check if we should retry
+        // Check if we should retry (for network errors and 5xx errors)
         if (_shouldRetry(error)) {
           try {
             final response = await _retryRequest(error.requestOptions);
@@ -438,4 +454,46 @@ class DioApiClient implements ApiClient {
 
   /// Get Dio instance for advanced usage
   Dio get dio => _dio;
+  
+  /// Validate that URL uses HTTPS
+  bool _validateSecureUrl(String url) {
+    // Allow localhost and local IPs in debug mode or development environment
+    if (kDebugMode || ApiConfig.environment == 'development') {
+      if (url.contains('localhost') || 
+          url.contains('127.0.0.1') || 
+          url.contains('10.0.2.2') ||  // Android emulator
+          url.startsWith('http://192.168.') ||  // Local network
+          url.startsWith('http://172.') ||  // Docker/local network
+          url.startsWith('http://10.')) {  // Local network
+        print('[ApiClient] ⚠️ Allowing insecure local URL in debug/development mode: $url');
+        return true;
+      }
+    }
+    
+    // Require HTTPS for all other URLs
+    if (!url.startsWith('https://')) {
+      print('[ApiClient] 🔴 Insecure URL detected: $url');
+      return false;
+    }
+    
+    return true;
+  }
+  
+  /// Configure certificate pinning
+  void _configureCertificatePinning(List<String>? allowedFingerprints) {
+    try {
+      // In debug mode, allow self-signed certificates
+      final allowSelfSigned = kDebugMode;
+      
+      CertificatePinningService.configureCertificatePinning(
+        _dio,
+        allowedSHA256Fingerprints: allowedFingerprints,
+        allowSelfSigned: allowSelfSigned,
+      );
+      
+      print('[ApiClient] 🔒 Certificate pinning configured');
+    } catch (e) {
+      print('[ApiClient] 🔴 Error configuring certificate pinning: $e');
+    }
+  }
 }

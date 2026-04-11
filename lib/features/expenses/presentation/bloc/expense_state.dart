@@ -15,7 +15,15 @@ class ExpenseInitial extends ExpenseState {
 }
 
 class ExpenseLoading extends ExpenseState {
-  const ExpenseLoading({super.syncStatusMap});
+  final List<Expense>? previousExpenses;
+  
+  const ExpenseLoading({
+    super.syncStatusMap,
+    this.previousExpenses,
+  });
+  
+  @override
+  List<Object?> get props => [previousExpenses, syncStatusMap];
 }
 
 class ExpenseLoaded extends ExpenseState {

@@ -88,6 +88,12 @@ class _AuditLogsPageContent extends StatefulWidget {
 
 class _AuditLogsPageContentState extends State<_AuditLogsPageContent> {
   final _scrollController = ScrollController();
+  
+  // Filter state
+  int? _selectedUserId;
+  String? _selectedAction;
+  String? _selectedEntityType;
+  bool _showFilters = false;
 
   @override
   void initState() {
@@ -114,6 +120,26 @@ class _AuditLogsPageContentState extends State<_AuditLogsPageContent> {
     return currentScroll >= (maxScroll * 0.9);
   }
 
+  void _applyFilters() {
+    context.read<AuditLogBloc>().add(FetchAuditLogsRequested(
+      userId: _selectedUserId,
+      action: _selectedAction,
+      entityType: _selectedEntityType,
+    ));
+    setState(() {
+      _showFilters = false;
+    });
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedUserId = null;
+      _selectedAction = null;
+      _selectedEntityType = null;
+    });
+    context.read<AuditLogBloc>().add(const FetchAuditLogsRequested());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,37 +147,153 @@ class _AuditLogsPageContentState extends State<_AuditLogsPageContent> {
         title: const Text('Audit Logs'),
         actions: [
           IconButton(
+            icon: Icon(_showFilters ? Icons.filter_alt : Icons.filter_alt_outlined),
+            onPressed: () {
+              setState(() {
+                _showFilters = !_showFilters;
+              });
+            },
+            tooltip: 'Filter',
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
               context.read<AuditLogBloc>().add(const RefreshAuditLogsRequested());
             },
+            tooltip: 'Refresh',
           ),
         ],
       ),
-      body: BlocConsumer<AuditLogBloc, AuditLogState>(
-        listener: (context, state) {
-          if (state is AuditLogError) {
-            if (state.requiresLogin) {
-              Navigator.of(context).pushReplacementNamed('/login');
-            } else if (state.isForbidden) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.orange,
-                  duration: const Duration(seconds: 5),
+      body: Column(
+        children: [
+          // Filter panel
+          if (_showFilters)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey[300]!),
                 ),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          }
-        },
-        builder: (context, state) {
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Filters',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // User ID filter
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'User ID',
+                      hintText: 'Enter user ID',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      _selectedUserId = value.isEmpty ? null : int.tryParse(value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Action filter
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Action',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    value: _selectedAction,
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('All Actions')),
+                      DropdownMenuItem(value: 'created', child: Text('Created')),
+                      DropdownMenuItem(value: 'updated', child: Text('Updated')),
+                      DropdownMenuItem(value: 'deleted', child: Text('Deleted')),
+                      DropdownMenuItem(value: 'login', child: Text('Login')),
+                      DropdownMenuItem(value: 'logout', child: Text('Logout')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedAction = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Entity Type filter
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Resource Type',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    value: _selectedEntityType,
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('All Types')),
+                      DropdownMenuItem(value: 'expense', child: Text('Expense')),
+                      DropdownMenuItem(value: 'transfer', child: Text('Transfer')),
+                      DropdownMenuItem(value: 'incoming', child: Text('Incoming')),
+                      DropdownMenuItem(value: 'user', child: Text('User')),
+                      DropdownMenuItem(value: 'exchange', child: Text('Exchange')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedEntityType = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Filter buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _clearFilters,
+                          child: const Text('Clear'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _applyFilters,
+                          child: const Text('Apply'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          // Audit logs list
+          Expanded(
+            child: BlocConsumer<AuditLogBloc, AuditLogState>(
+              listener: (context, state) {
+                if (state is AuditLogError) {
+                  if (state.requiresLogin) {
+                    Navigator.of(context).pushReplacementNamed('/login');
+                  } else if (state.isForbidden) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(state.message),
+                        backgroundColor: Colors.orange,
+                        duration: const Duration(seconds: 5),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(state.message),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              builder: (context, state) {
           if (state is AuditLogLoading) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -228,7 +370,10 @@ class _AuditLogsPageContentState extends State<_AuditLogsPageContent> {
           }
 
           return const Center(child: Text('No data'));
-        },
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -11,7 +11,8 @@ class CreateExchangeEvent extends ExchangeEvent {
   final int? transferId; // Optional - for balance-based exchanges
   final String targetCurrency; // 'SYP' or 'TRY'
   final double amountUsd;
-  final double exchangeRate;
+  final double? exchangeRate; // Optional if convertedAmount is provided
+  final double? convertedAmount; // Optional if exchangeRate is provided (Backend v3.1+)
   final DateTime exchangeDate;
   final String? notes;
 
@@ -19,13 +20,14 @@ class CreateExchangeEvent extends ExchangeEvent {
     this.transferId,
     required this.targetCurrency,
     required this.amountUsd,
-    required this.exchangeRate,
+    this.exchangeRate,
+    this.convertedAmount,
     required this.exchangeDate,
     this.notes,
   });
 
   @override
-  List<Object?> get props => [transferId, targetCurrency, amountUsd, exchangeRate, exchangeDate, notes];
+  List<Object?> get props => [transferId, targetCurrency, amountUsd, exchangeRate, convertedAmount, exchangeDate, notes];
 }
 
 class LoadAllExchangesEvent extends ExchangeEvent {
